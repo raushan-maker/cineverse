@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NEUROTIX — Stream Everything. Fear Nothing.</title>
+    <meta name="description"
+        content="God-level streaming platform — movies, series, anime. No limits, no ads, pure raw stream." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="stylesheet" href="style.css?v=20260705010" />
+
+</head>
+
+<body>
+    <!-- Scanline overlay -->
+    <div class="scanlines" aria-hidden="true"></div>
+
+    <!-- ═══════════════════════════════════ NAVIGATION ═══════════════════════ -->
+    <nav class="nav" id="main-nav">
+        <div class="nav-inner">
+            <a class="nav-logo" href="#" id="home-link">
+                <span class="logo-icon">⬡</span>
+                <span class="logo-text" id="app-name-nav">NEUROTIX</span>
+            </a>
+
+            <div class="nav-links">
+                <a class="nav-link active" data-filter="all" href="#">Home</a>
+                <a class="nav-link" data-filter="movie" href="#">Movies</a>
+                <a class="nav-link" data-filter="tv" href="#">Series</a>
+                <a class="nav-link" data-filter="anime" href="#">Anime</a>
+                <a class="nav-link" data-filter="episode" href="#">Episodes</a>
+                <a class="nav-link" data-filter="genres" href="#">Genres</a>
+            </div>
+
+            <div class="nav-right">
+                <!-- Mobile search icon (opens inline search) -->
+                <button class="mobile-search-btn" id="mobile-search-btn" aria-label="Search">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="M21 21l-4.35-4.35" />
+                    </svg>
+                </button>
+
+                <div class="search-wrap" id="search-wrap">
+                    <button class="search-icon-btn" id="search-toggle" aria-label="Search">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="M21 21l-4.35-4.35" />
+                        </svg>
+                    </button>
+                    <input class="search-input" type="text" id="search-input"
+                        placeholder="Search movies, series, anime..." autocomplete="off" spellcheck="false" />
+                </div>
+                <button class="settings-btn" id="settings-btn" aria-label="Settings" title="Settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+                        <path d="M12 2v2M12 20v2M2 12H4M20 12h2" />
+                    </svg>
+                </button>
+
+                <!-- Hamburger (mobile only) -->
+                <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Search Bar (below nav, slides down) -->
+        <div class="mobile-search-bar hidden" id="mobile-search-bar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input class="mobile-search-input" type="text" id="mobile-search-input"
+                placeholder="Search movies, series, anime..." autocomplete="off" spellcheck="false" />
+            <button class="mobile-search-close" id="mobile-search-close" aria-label="Close search">✕</button>
+        </div>
+    </nav>
+
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav-drawer" id="mobile-nav-drawer" aria-hidden="true">
+        <div class="mobile-nav-header">
+            <span class="mobile-nav-logo">⬡ NEUROTIX</span>
+            <button class="mobile-nav-close" id="mobile-nav-close" aria-label="Close menu">✕</button>
+        </div>
+        <div class="mobile-nav-links">
+            <a class="mobile-nav-link active" data-filter="all" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Home
+            </a>
+            <a class="mobile-nav-link" data-filter="movie" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+                Movies
+            </a>
+            <a class="mobile-nav-link" data-filter="tv" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+                Series
+            </a>
+            <a class="mobile-nav-link" data-filter="anime" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                Anime
+            </a>
+            <a class="mobile-nav-link" data-filter="episode" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/></svg>
+                Episodes
+            </a>
+            <a class="mobile-nav-link" data-filter="genres" href="#">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/><circle cx="7.5" cy="10.5" r="1.5"/><circle cx="11.5" cy="7.5" r="1.5"/><circle cx="16.5" cy="9.5" r="1.5"/><path d="M6 16c2 3.5 6 3.5 8 0"/></svg>
+                Genres
+            </a>
+        </div>
+    </div>
+    <div class="mobile-nav-overlay hidden" id="mobile-nav-overlay"></div>
+
+    <!-- ═══════════════════════════════════ HERO SECTION ═════════════════════ -->
+    <section class="hero" id="hero-section">
+        <div class="hero-bg" id="hero-bg"></div>
+        <div class="hero-gradient"></div>
+        <div class="hero-content" id="hero-content">
+            <div class="hero-badge" id="hero-badge">Featured</div>
+            <h1 class="hero-title" id="hero-title">Loading...</h1>
+            <div class="hero-meta" id="hero-meta">
+                <span class="hero-rating" id="hero-rating">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#f5c518">
+                        <polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    <span id="hero-rating-val">—</span>
+                </span>
+                <span class="hero-year" id="hero-year">—</span>
+                <span class="hero-type-badge" id="hero-type-badge">Movie</span>
+            </div>
+            <p class="hero-desc" id="hero-desc">Select a title to watch.</p>
+            <div class="hero-actions">
+                <button class="btn-hero-play" id="hero-play-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                    Play Now
+                </button>
+                <button class="btn-hero-info" id="hero-info-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    More Info
+                </button>
+            </div>
+        </div>
+        <!-- Hero dots -->
+        <div class="hero-dots" id="hero-dots"></div>
+    </section>
+
+    <!-- ═══════════════════════════════════ MAIN CONTENT ══════════════════════ -->
+    <main class="main" id="main-content">
+        <!-- Content rows rendered by JS -->
+        <div id="rows-container"></div>
+
+        <!-- Loading state: DNA Matrix Animation -->
+        <div class="homepage-loader" id="homepage-loader">
+            <div class="dna-loader-wrap">
+                <div class="matrix-rain" aria-hidden="true">
+                    <span class="mr-col" style="--d:0s">01</span>
+                    <span class="mr-col" style="--d:.15s">10</span>
+                    <span class="mr-col" style="--d:.3s">11</span>
+                    <span class="mr-col" style="--d:.45s">00</span>
+                    <span class="mr-col" style="--d:.6s">01</span>
+                    <span class="mr-col" style="--d:.75s">10</span>
+                    <span class="mr-col" style="--d:.9s">11</span>
+                    <span class="mr-col" style="--d:1.05s">00</span>
+                </div>
+                <div class="dna-helix" aria-hidden="true">
+                    <div class="dna-strand left-strand"></div>
+                    <div class="dna-strand right-strand"></div>
+                    <div class="dna-rung" style="--ri:0"></div>
+                    <div class="dna-rung" style="--ri:1"></div>
+                    <div class="dna-rung" style="--ri:2"></div>
+                    <div class="dna-rung" style="--ri:3"></div>
+                    <div class="dna-rung" style="--ri:4"></div>
+                    <div class="dna-rung" style="--ri:5"></div>
+                </div>
+                <div class="dna-info">
+                    <div class="dna-title">Scanning the Multiverse</div>
+                    <div class="dna-sub" id="cyber-loader-subtext">Initializing stream protocol...</div>
+                </div>
+                <div class="dna-progress"><div class="dna-progress-fill"></div></div>
+            </div>
+        </div>
+
+        <!-- Empty state for search/filter -->
+        <div class="empty-state hidden" id="empty-state">
+            <div class="empty-icon">⚡</div>
+            <h3>No results found</h3>
+            <p>Try a different search term or category.</p>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════════════════ PLAYER MODAL ══════════════════════ -->
+    <div class="player-modal hidden" id="player-modal" role="dialog" aria-modal="true">
+        <div class="player-modal-inner">
+            <!-- Close -->
+            <button class="player-close-btn" id="player-close-btn" aria-label="Close player">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+
+            <!-- Player area -->
+            <div class="player-wrap" id="player-wrap">
+                <div class="player-video-box" id="player-video-box">
+                    <!-- Loading spinner: Holographic Film Reel -->
+                    <div class="video-spinner-wrap" id="video-spinner-wrap">
+                        <div class="filmreel-loader">
+                            <div class="filmreel-outer" aria-hidden="true">
+                                <div class="filmreel-hole" style="--ang:0deg"></div>
+                                <div class="filmreel-hole" style="--ang:60deg"></div>
+                                <div class="filmreel-hole" style="--ang:120deg"></div>
+                                <div class="filmreel-hole" style="--ang:180deg"></div>
+                                <div class="filmreel-hole" style="--ang:240deg"></div>
+                                <div class="filmreel-hole" style="--ang:300deg"></div>
+                                <div class="filmreel-scanbeam"></div>
+                                <div class="filmreel-hub"></div>
+                            </div>
+                            <div class="filmreel-waveform" aria-hidden="true">
+                                <span style="--wh:40%"></span><span style="--wh:70%"></span><span style="--wh:55%"></span>
+                                <span style="--wh:90%"></span><span style="--wh:60%"></span><span style="--wh:45%"></span>
+                                <span style="--wh:80%"></span><span style="--wh:35%"></span><span style="--wh:65%"></span>
+                                <span style="--wh:75%"></span><span style="--wh:50%"></span><span style="--wh:85%"></span>
+                            </div>
+                            <div class="filmreel-text">
+                                <div class="filmreel-title" id="spinner-text">Resolving Stream</div>
+                                <div class="filmreel-sub" id="video-loader-subtext">Connecting to provider node...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Backdrop: closes drawer when clicking outside it -->
+                    <div class="server-drawer-backdrop" id="server-drawer-backdrop"></div>
+                    <!-- Left Server Drawer (slides in over video when servers load) -->
+                    <div class="server-drawer hidden" id="server-drawer">
+                        <div class="server-drawer-header">
+                            <div class="server-drawer-title">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                Stream Servers
+                            </div>
+                            <div style="display:flex;gap:6px;align-items:center">
+                                <button class="btn-add-custom-link" id="add-custom-link-btn" title="Add custom stream or embed URL">➕ Add Link</button>
+                                <button class="server-drawer-close" id="server-drawer-close" title="Close server panel">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quality + Copy row (HLS only) -->
+                        <div class="quality-row hidden" id="quality-row">
+                            <div class="quality-dropdown-wrapper" id="quality-selector-container">
+                                <button class="btn-quality" id="quality-btn">
+                                    <span id="quality-btn-text">Quality: Auto</span>
+                                    <svg class="chevron-icon" viewBox="0 0 24 24" width="12" height="12">
+                                        <path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </button>
+                                <div class="quality-menu hidden" id="quality-menu"></div>
+                            </div>
+                            <button class="btn-copy" id="copy-stream-btn" title="Copy stream link">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                </svg>
+                                Copy Link
+                            </button>
+                        </div>
+
+                        <!-- Server list -->
+                        <div class="servers-grid" id="servers-grid">
+                            <div class="servers-loading" id="servers-loading">
+                                <!-- Circuit board pulse animation -->
+                                <div class="circuit-loader" aria-hidden="true">
+                                    <div class="circuit-track h top"></div>
+                                    <div class="circuit-track h bottom"></div>
+                                    <div class="circuit-track v left"></div>
+                                    <div class="circuit-track v right"></div>
+                                    <div class="circuit-node" style="--cx:50%;--cy:50%;--cd:0s"></div>
+                                    <div class="circuit-node" style="--cx:20%;--cy:30%;--cd:.2s"></div>
+                                    <div class="circuit-node" style="--cx:80%;--cy:30%;--cd:.4s"></div>
+                                    <div class="circuit-node" style="--cx:20%;--cy:70%;--cd:.6s"></div>
+                                    <div class="circuit-node" style="--cx:80%;--cy:70%;--cd:.8s"></div>
+                                    <div class="circuit-pulse"></div>
+                                </div>
+                                <span class="circuit-label">Fetching Servers...</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+
+
+                    <!-- Idle poster (shown after servers load, before play) -->
+                    <div class="video-idle-overlay hidden" id="video-idle-overlay">
+                        <div class="idle-poster-bg" id="idle-poster-bg"></div>
+                        <div class="idle-overlay-content">
+                            <div class="idle-play-ring">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                            </div>
+                            <p class="idle-label">Click a server to start playing</p>
+                        </div>
+                    </div>
+                    <!-- Details View (shown initially before clicking play) -->
+                    <div class="player-details-view hidden" id="player-details-view">
+                        <div class="details-backdrop" id="details-backdrop"></div>
+                        <div class="details-bg-gradient"></div>
+                        <div class="details-overlay-content">
+                            <div class="details-poster-wrap">
+                                <img class="details-poster" id="details-poster" src="" alt="Poster" onerror="handleDetailsPosterError(this)" />
+                            </div>
+                            <div class="details-info-wrap">
+                                <!-- Badge row: rating + info pills -->
+                                <div class="details-badge-row" id="details-badge-row">
+                                    <span class="details-rating-pill" id="details-rating-pill">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                            <polygon
+                                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                        </svg>
+                                        <span id="details-rating-val">—</span>
+                                    </span>
+                                    <span class="details-info-pill" id="details-year">—</span>
+                                    <span class="details-info-pill" id="details-runtime" style="display:none">—</span>
+                                    <span class="details-info-pill" id="details-badge">Movie</span>
+                                    <span class="details-info-pill" style="color:var(--gold)">HD</span>
+                                </div>
+                                <h1 class="details-title" id="details-title">Title</h1>
+                                <p class="details-desc" id="details-desc">Description...</p>
+                                
+                                <!-- Live Countdown for Upcoming Releases -->
+                                <div class="upcoming-countdown-wrap hidden" id="upcoming-countdown-wrap">
+                                    <div class="countdown-label"><span class="pulse-dot"></span> TIME UNTIL LAUNCH</div>
+                                    <div class="countdown-grid">
+                                        <div class="countdown-card">
+                                            <span class="countdown-val" id="countdown-days">00</span>
+                                            <span class="countdown-unit">Days</span>
+                                        </div>
+                                        <div class="countdown-divider">:</div>
+                                        <div class="countdown-card">
+                                            <span class="countdown-val" id="countdown-hours">00</span>
+                                            <span class="countdown-unit">Hours</span>
+                                        </div>
+                                        <div class="countdown-divider">:</div>
+                                        <div class="countdown-card">
+                                            <span class="countdown-val" id="countdown-mins">00</span>
+                                            <span class="countdown-unit">Mins</span>
+                                        </div>
+                                        <div class="countdown-divider">:</div>
+                                        <div class="countdown-card">
+                                            <span class="countdown-val" id="countdown-secs">00</span>
+                                            <span class="countdown-unit">Secs</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="details-actions">
+                                    <button class="btn-details-play hidden" id="details-play-btn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <polygon points="5 3 19 12 5 21 5 3" />
+                                        </svg>
+                                        <span id="details-play-btn-text">Play Now</span>
+                                    </button>
+                                    <div class="details-loader-msg" id="details-loader-msg">
+                                        <div class="glitch-bar-loader" aria-hidden="true">
+                                            <span class="glitch-seg" style="--gd:0s"></span>
+                                            <span class="glitch-seg" style="--gd:.1s"></span>
+                                            <span class="glitch-seg" style="--gd:.2s"></span>
+                                            <span class="glitch-seg" style="--gd:.3s"></span>
+                                            <span class="glitch-seg" style="--gd:.4s"></span>
+                                        </div>
+                                        <span class="loader-msg-text">Loading metadata...</span>
+                                    </div>
+                                </div>
+                                <!-- Genre tags (populated from IMDB data) -->
+                                <div class="details-genres" id="details-genres"></div>
+
+                                <!-- Cast & Characters -->
+                                <div class="details-cast-wrap hidden" id="details-cast-wrap">
+                                    <h3 class="details-cast-title">Cast & Characters</h3>
+                                    <div class="details-cast-list" id="details-cast-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <video id="video" class="hidden" controls crossorigin="anonymous"></video>
+                    <iframe id="iframe-player" class="hidden" frameborder="0" allowfullscreen></iframe>
+                    </div>
+
+                <!-- RIGHT Sidebar — info + episodes only -->
+                <div class="player-sidebar">
+                    <!-- Sidebar top bar: Servers toggle (appears when servers are loaded) -->
+                    <div class="sidebar-servers-bar" id="sidebar-servers-bar">
+                        <button class="server-drawer-toggle hidden" id="server-drawer-toggle" title="Open stream server list">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Choose Server
+                        </button>
+                        <button class="btn-popout hidden" id="open-external-btn" title="Open active server in new tab">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                            </svg>
+                            Popout
+                        </button>
+                    </div>
+                    <div class="player-title-area">
+                        <h2 class="player-title" id="player-title">Loading...</h2>
+                        <div class="player-meta-row" id="player-meta-row">
+                            <span class="pm-rating" id="pm-rating"></span>
+                            <span class="pm-year" id="pm-year"></span>
+                            <span class="pm-runtime" id="pm-runtime"></span>
+                        </div>
+                        <div class="player-plot-wrapper" id="player-plot-wrapper">
+                            <div class="plot-toggle-header" id="plot-toggle-header">
+                                <span>Storyline / About</span>
+                                <span class="plot-toggle-arrow" id="plot-toggle-arrow">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="18 15 12 9 6 15"></polyline>
+                                    </svg>
+                                </span>
+                            </div>
+                            <p class="player-plot" id="player-plot"></p>
+                            <div class="player-tags" id="player-tags"></div>
+                        </div>
+                    </div>
+
+                    <!-- TV season/episode nav -->
+                    <div class="tv-nav hidden" id="tv-nav">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <h4 class="tv-nav-label" style="margin: 0;">Select Episode</h4>
+                        </div>
+                        <select class="cyber-select" id="season-select"></select>
+                        <div class="episodes-grid" id="episodes-grid"></div>
+                        <!-- Prev / Next episode controls -->
+                        <div class="ep-nav-bar" id="ep-nav-bar">
+                            <button class="ep-nav-btn" id="ep-prev-btn" title="Previous episode" disabled>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                    <polyline points="15 18 9 12 15 6" />
+                                </svg>
+                                Prev
+                            </button>
+                            <span class="ep-nav-info" id="ep-nav-info">—</span>
+                            <button class="ep-nav-btn" id="ep-next-btn" title="Next episode" disabled>
+                                Next
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                                    <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ⬇ Download Section — right sidebar bottom -->
+                    <div class="sidebar-download-section" id="download-section">
+                        <div class="sidebar-download-label">Downloads</div>
+                        <button class="btn-download-big" id="download-btn" disabled title="Select an HLS server first">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            <span id="download-btn-text">Download HLS</span>
+                        </button>
+                        <button class="btn-download-big btn-download-mp4" id="omnisave-download-btn" title="Download direct MP4">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            <span id="omnisave-download-btn-text">Direct MP4 Download</span>
+                        </button>
+                        <p class="download-hint" id="download-hint">HLS streams only — embeds cannot be downloaded.</p>
+                        <div id="omnisave-options" class="omnisave-options hidden"></div>
+                        <div class="download-progress-wrap hidden" id="download-progress-wrap">
+                            <div class="download-progress-header">
+                                <span id="download-status-text">Preparing download...</span>
+                            </div>
+                            <div class="download-progress-bar-track">
+                                <div class="download-progress-bar-fill" id="download-progress-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Ghost console-logs (hidden): keeps JS log() calls from erroring -->
+    <div id="console-logs" style="display:none;"></div>
+
+
+
+
+    <!-- ═══════════════════════════════════ SEE ALL OVERLAY ════════════════════ -->
+    <div class="see-all-overlay hidden" id="see-all-overlay" role="dialog" aria-modal="true">
+        <div class="see-all-inner">
+            <div class="see-all-header">
+                <div class="see-all-header-left">
+                    <button class="see-all-back-btn" id="see-all-back-btn" aria-label="Go back">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                        Back
+                    </button>
+                    <div class="see-all-title-wrap">
+                        <h2 class="see-all-title" id="see-all-title">All Items</h2>
+                        <span class="see-all-count" id="see-all-count"></span>
+                    </div>
+                </div>
+                <div class="see-all-header-right">
+                    <div class="see-all-sort-wrap">
+                        <label class="see-all-sort-label">Sort by</label>
+                        <select class="see-all-sort-select" id="see-all-sort-select">
+                            <option value="default">Default</option>
+                            <option value="rating-desc">Rating ↓</option>
+                            <option value="rating-asc">Rating ↑</option>
+                            <option value="year-desc">Newest First</option>
+                            <option value="year-asc">Oldest First</option>
+                            <option value="title-asc">A → Z</option>
+                            <option value="title-desc">Z → A</option>
+                        </select>
+                    </div>
+                    <div class="see-all-view-toggle">
+                        <button class="see-all-view-btn active" id="see-all-grid-btn" title="Grid view">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="3" y="3" width="7" height="7" rx="1" />
+                                <rect x="14" y="3" width="7" height="7" rx="1" />
+                                <rect x="3" y="14" width="7" height="7" rx="1" />
+                                <rect x="14" y="14" width="7" height="7" rx="1" />
+                            </svg>
+                        </button>
+                        <button class="see-all-view-btn" id="see-all-list-btn" title="List view">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round">
+                                <line x1="8" y1="6" x2="21" y2="6" />
+                                <line x1="8" y1="12" x2="21" y2="12" />
+                                <line x1="8" y1="18" x2="21" y2="18" />
+                                <line x1="3" y1="6" x2="3.01" y2="6" />
+                                <line x1="3" y1="12" x2="3.01" y2="12" />
+                                <line x1="3" y1="18" x2="3.01" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="see-all-search-bar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="M21 21l-4.35-4.35" />
+                </svg>
+                <input class="see-all-search-input" id="see-all-search-input" type="text" placeholder="Filter titles..."
+                    autocomplete="off" />
+            </div>
+            <div class="see-all-grid" id="see-all-grid"></div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════ SETTINGS PANEL ═══════════════════ -->
+
+    <div class="settings-panel hidden" id="settings-panel">
+        <div class="settings-inner">
+            <div class="settings-header">
+                <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Platform Config
+                </h3>
+                <button class="settings-close" id="settings-close">✕</button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-group">
+                    <label class="setting-label">Source Domain</label>
+                    <input class="setting-input" type="url" id="cfg-domain" placeholder="https://multimovies.makeup" />
+                    <p class="setting-hint">Change when the site moves to a new domain</p>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">AnimeDekho Domain</label>
+                    <input class="setting-input" type="url" id="cfg-animedekho-domain"
+                        placeholder="https://animedekho.app" />
+                    <p class="setting-hint">Change when AnimeDekho moves to a new domain</p>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">OMDB API Key <span class="optional-tag">optional</span></label>
+                    <input class="setting-input" type="text" id="cfg-omdb" placeholder="Get free key at omdbapi.com" />
+                    <p class="setting-hint">Enables rich IMDB data: plot, cast, awards</p>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">App Name</label>
+                    <input class="setting-input" type="text" id="cfg-appname" placeholder="NEUROTIX" />
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">Default Streaming Server</label>
+                    <select class="setting-input" id="cfg-defaultserver">
+                        <option value="">Auto (Fastest/First)</option>
+                        <option value="1embed">1Embed</option>
+                        <option value="cinemaos">CinemaOS</option>
+                        <option value="cloudbox">Cloudbox</option>
+                        <option value="cloudplay">Cloudplay</option>
+                        <option value="embedsu">Embed.su</option>
+                        <option value="embedmaster">EmbedMaster</option>
+                        <option value="hyperlink">Hyperlink</option>
+                        <option value="mediahub">Mediahub</option>
+                        <option value="movies111">Movies111</option>
+                        <option value="movievault">MovieVault</option>
+                        <option value="nhd">NHD Server</option>
+                        <option value="nexvid">NexVid</option>
+                        <option value="nontongo">NontonGo</option>
+                        <option value="nxsha">Nxsha Player</option>
+                        <option value="peachify">Peachify</option>
+                        <option value="screenscape">Screenscape</option>
+                        <option value="smashy">Smashy</option>
+                        <option value="streamboxhd">StreamBoxHD</option>
+                        <option value="streamvault">StreamVault</option>
+                        <option value="superembed">SuperEmbed</option>
+                        <option value="ultrabox">Ultrabox</option>
+                        <option value="upcloud">Upcloud</option>
+                        <option value="cineverse">Vibuxer (Cineverse)</option>
+                        <option value="vidcore">VidCore</option>
+                        <option value="vidfast">VidFast</option>
+                        <option value="vidfy">Vidfy</option>
+                        <option value="vidfyi">Vidfyi</option>
+                        <option value="vidify">Vidify</option>
+                        <option value="vidking">VidKing</option>
+                        <option value="vidlink">VidLink</option>
+                        <option value="vidmov">Vidmov</option>
+                        <option value="vidnest">VidNest</option>
+                        <option value="vidplay">VidPlay</option>
+                        <option value="vidrock">Vidrock</option>
+                        <option value="vidsrc">VidSrc.xyz</option>
+                        <option value="vidsrcto">VidSrc.to</option>
+                        <option value="vidsrcru">VidSrc (RU)</option>
+                        <option value="vidup">VidUp</option>
+                        <option value="videasy">Videasy</option>
+                        <option value="vidzee">Vidzee Embed</option>
+                        <option value="vidzen">Vidzen</option>
+                    </select>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn-save-config" id="save-config-btn">Save & Reload</button>
+                    <button class="btn-refresh-cache" id="refresh-cache-btn">🔄 Refresh Cache</button>
+                </div>
+                <div class="setting-status" id="setting-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay backdrop -->
+    <div class="modal-backdrop hidden" id="modal-backdrop"></div>
+
+    <!-- DevTools Blocker Overlay -->
+    <div class="devtools-blocker hidden" id="devtools-blocker">
+        <div class="devtools-blocker-bg"></div>
+        <div class="devtools-blocker-content">
+            <div class="security-shield">
+                <span class="shield-icon">⚠️</span>
+                <div class="shield-glow"></div>
+            </div>
+            <h1 class="blocker-title">SECURITY PROTOCOL ACTIVE</h1>
+            <div class="glitch-text" data-text="DEVTOOLS DETECTED">DEVTOOLS DETECTED</div>
+            <p class="blocker-message">
+                To protect our stream resources and respect licensing terms, inspecting page code is prohibited.
+            </p>
+            <div class="blocker-warning-box">
+                <span class="warning-tag">ALERT</span>
+                <span class="warning-text">Please close Developer Tools / Inspect Element settings in your browser to resume streaming.</span>
+            </div>
+            <div class="system-status">
+                <span class="status-dot pulse-red"></span> SYSTEM SHIELD: SECURE_LOCK_ON
+            </div>
+        </div>
+    </div>
+
+    <!-- DevTools Toast Container -->
+    <div class="security-toast-container" id="security-toast-container"></div>
+
+    <script src="app.min.js?v=20260705005"></script>
+</body>
+
+</html>

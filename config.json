@@ -1,0 +1,39 @@
+{
+  "source_domain": "https://multimovies.mhttps:/qrewfsdSAF/example.comakeup",
+  "omdb_api_key": "",
+  "app_name": "NEUROTIX",
+  "app_tagline": "Stream Everything. Fear Nothing.",
+  "featured_count": 8,
+  "cards_per_row": 20,
+  "cache_ttl_seconds": 300,
+  "sections": [
+    {
+      "id": "dt-movies",
+      "title": "🎬 Latest Movies",
+      "icon": "🎬"
+    },
+    {
+      "id": "dt-tvshows",
+      "title": "📺 Web Series",
+      "icon": "📺"
+    },
+    {
+      "id": "dt-seasons",
+      "title": "🗂️ Recent Seasons",
+      "icon": "🗂️"
+    },
+    {
+      "id": "dt-episodes",
+      "title": "▶️ New Episodes",
+      "icon": "▶️"
+    },
+    {
+      "id": "popular",
+      "title": "🔥 Most Popular",
+      "icon": "🔥"
+    }
+  ],
+  "animedekho_domain": "https://animedekho.app",
+  "default_server": "peachify",
+  "enable_adblock": false
+}
