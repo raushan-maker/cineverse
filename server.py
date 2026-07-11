@@ -4321,7 +4321,11 @@ def serve_index(request: Request):
 def serve_admin():
     filepath = os.path.join(_BASE_DIR, "admin.html")
     if os.path.exists(filepath):
-        return FileResponse(filepath, media_type="text/html")
+        resp = FileResponse(filepath, media_type="text/html")
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
     raise HTTPException(status_code=404, detail="Admin panel file not found")
 
 # Serve all other static assets
