@@ -59,14 +59,6 @@
                     <input class="search-input" type="text" id="search-input"
                         placeholder="Search movies, series, anime..." autocomplete="off" spellcheck="false" />
                 </div>
-                <button class="settings-btn" id="settings-btn" aria-label="Settings" title="Settings">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3" />
-                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
-                        <path d="M12 2v2M12 20v2M2 12H4M20 12h2" />
-                    </svg>
-                </button>
 
                 <!-- Hamburger (mobile only) -->
                 <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu" aria-expanded="false">
@@ -574,94 +566,6 @@
                     autocomplete="off" />
             </div>
             <div class="see-all-grid" id="see-all-grid"></div>
-        </div>
-    </div>
-
-    <!-- ═══════════════════════════════════ SETTINGS PANEL ═══════════════════ -->
-
-    <div class="settings-panel hidden" id="settings-panel">
-        <div class="settings-inner">
-            <div class="settings-header">
-                <h3>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    Platform Config
-                </h3>
-                <button class="settings-close" id="settings-close">✕</button>
-            </div>
-            <div class="settings-body">
-                <div class="setting-group">
-                    <label class="setting-label">Source Domain</label>
-                    <input class="setting-input" type="url" id="cfg-domain" placeholder="https://multimovies.makeup" />
-                    <p class="setting-hint">Change when the site moves to a new domain</p>
-                </div>
-                <div class="setting-group">
-                    <label class="setting-label">AnimeDekho Domain</label>
-                    <input class="setting-input" type="url" id="cfg-animedekho-domain"
-                        placeholder="https://animedekho.app" />
-                    <p class="setting-hint">Change when AnimeDekho moves to a new domain</p>
-                </div>
-                <div class="setting-group">
-                    <label class="setting-label">OMDB API Key <span class="optional-tag">optional</span></label>
-                    <input class="setting-input" type="text" id="cfg-omdb" placeholder="Get free key at omdbapi.com" />
-                    <p class="setting-hint">Enables rich IMDB data: plot, cast, awards</p>
-                </div>
-                <div class="setting-group">
-                    <label class="setting-label">App Name</label>
-                    <input class="setting-input" type="text" id="cfg-appname" placeholder="NEUROTIX" />
-                </div>
-                <div class="setting-group">
-                    <label class="setting-label">Default Streaming Server</label>
-                    <select class="setting-input" id="cfg-defaultserver">
-                        <option value="">Auto (Fastest/First)</option>
-                        <option value="1embed">1Embed</option>
-                        <option value="cinemaos">CinemaOS</option>
-                        <option value="cloudbox">Cloudbox</option>
-                        <option value="cloudplay">Cloudplay</option>
-                        <option value="embedsu">Embed.su</option>
-                        <option value="embedmaster">EmbedMaster</option>
-                        <option value="hyperlink">Hyperlink</option>
-                        <option value="mediahub">Mediahub</option>
-                        <option value="movies111">Movies111</option>
-                        <option value="movievault">MovieVault</option>
-                        <option value="nhd">NHD Server</option>
-                        <option value="nexvid">NexVid</option>
-                        <option value="nontongo">NontonGo</option>
-                        <option value="nxsha">Nxsha Player</option>
-                        <option value="peachify">Peachify</option>
-                        <option value="screenscape">Screenscape</option>
-                        <option value="smashy">Smashy</option>
-                        <option value="streamboxhd">StreamBoxHD</option>
-                        <option value="streamvault">StreamVault</option>
-                        <option value="superembed">SuperEmbed</option>
-                        <option value="ultrabox">Ultrabox</option>
-                        <option value="upcloud">Upcloud</option>
-                        <option value="cineverse">Vibuxer (Cineverse)</option>
-                        <option value="vidcore">VidCore</option>
-                        <option value="vidfast">VidFast</option>
-                        <option value="vidfy">Vidfy</option>
-                        <option value="vidfyi">Vidfyi</option>
-                        <option value="vidify">Vidify</option>
-                        <option value="vidking">VidKing</option>
-                        <option value="vidlink">VidLink</option>
-                        <option value="vidmov">Vidmov</option>
-                        <option value="vidnest">VidNest</option>
-                        <option value="vidplay">VidPlay</option>
-                        <option value="vidrock">Vidrock</option>
-                        <option value="vidsrc">VidSrc.xyz</option>
-                        <option value="vidsrcto">VidSrc.to</option>
-                        <option value="vidsrcru">VidSrc (RU)</option>
-                        <option value="vidup">VidUp</option>
-                        <option value="videasy">Videasy</option>
-                        <option value="vidzee">Vidzee Embed</option>
-                        <option value="vidzen">Vidzen</option>
-                    </select>
-                </div>
-                <div class="settings-actions">
-                    <button class="btn-save-config" id="save-config-btn">Save & Reload</button>
-                    <button class="btn-refresh-cache" id="refresh-cache-btn">🔄 Refresh Cache</button>
-                </div>
-                <div class="setting-status" id="setting-status"></div>
-            </div>
         </div>
     </div>
 

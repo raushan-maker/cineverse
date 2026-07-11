@@ -15,6 +15,80 @@ from cryptography.hazmat.primitives import padding
 import requests
 import hmac
 import secrets
+import collections
+from datetime import datetime
+
+class LogCapture:
+    def __init__(self, original_stream):
+        self.original_stream = original_stream
+        self.buffer = collections.deque(maxlen=300)
+
+    def write(self, message):
+        self.original_stream.write(message)
+        if message.strip():
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.buffer.append(f"[{timestamp}] {message.strip()}")
+
+    def flush(self):
+        self.original_stream.flush()
+
+    def isatty(self):
+        return self.original_stream.isatty() if hasattr(self.original_stream, 'isatty') else False
+
+    def __getattr__(self, name):
+        return getattr(self.original_stream, name)
+
+# Redirect stdout and stderr to capture logs
+sys.stdout = LogCapture(sys.stdout)
+sys.stderr = LogCapture(sys.stderr)
+
+import time
+START_TIME = time.time()
+ACTIVE_SESSIONS = {}
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def load_unique_visitors():
+    path = os.path.join(_BASE_DIR, "unique_visitors.json")
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return set(json.load(f))
+        except Exception:
+            pass
+    return set()
+
+def save_unique_visitor(ip):
+    if ip not in UNIQUE_VISITORS:
+        UNIQUE_VISITORS.add(ip)
+        path = os.path.join(_BASE_DIR, "unique_visitors.json")
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(list(UNIQUE_VISITORS), f)
+        except Exception:
+            pass
+
+def load_banned_ips():
+    path = os.path.join(_BASE_DIR, "banned_ips.json")
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return set(json.load(f))
+        except Exception:
+            pass
+    return set()
+
+def save_banned_ips():
+    path = os.path.join(_BASE_DIR, "banned_ips.json")
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(list(BANNED_IPS), f)
+    except Exception:
+        pass
+
+BANNED_IPS = load_banned_ips()
+UNIQUE_VISITORS = load_unique_visitors()
+
 
 def load_or_generate_session_secret():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,6 +123,22 @@ def verify_signed_session(cookie_value):
         return hmac.compare_digest(sig, expected_sig)
     except Exception:
         return False
+
+def generate_signed_admin_session():
+    session_id = "admin_" + secrets.token_hex(16)
+    sig = hmac.new(SESSION_SECRET, session_id.encode(), hashlib.sha256).hexdigest()
+    return f"{session_id}.{sig}"
+
+def verify_signed_admin_session(cookie_value):
+    try:
+        session_id, sig = cookie_value.split(".", 1)
+        if not session_id.startswith("admin_"):
+            return False
+        expected_sig = hmac.new(SESSION_SECRET, session_id.encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(sig, expected_sig)
+    except Exception:
+        return False
+
 
 _session = requests.Session()
 _session.headers.update({
@@ -114,6 +204,8 @@ def save_config(cfg):
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 CONFIG = load_config()
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", CONFIG.get("admin_username", "admin"))
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", CONFIG.get("admin_password", "admin"))
 
 # ── Homepage Cache ─────────────────────────────────────────────────────────────
 import time
@@ -2214,6 +2306,31 @@ from urllib.parse import urljoin
 
 app = FastAPI(docs_url=None, redoc_url=None)
 
+# IP Blacklist / Ban Middleware
+@app.middleware("http")
+async def ban_check_middleware(request: Request, call_next):
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.client.host if request.client else "127.0.0.1"
+
+    if ip == "127.0.0.1":
+        return await call_next(request)
+
+    if ip in BANNED_IPS:
+        admin_session = request.cookies.get("admin_session_token")
+        if admin_session and verify_signed_admin_session(admin_session):
+            return await call_next(request)
+
+        return Response(
+            "Access Denied: Your IP has been blacklisted by administrator security protocol.",
+            status_code=403,
+            media_type="text/plain"
+        )
+
+    return await call_next(request)
+
 # Global httpx AsyncClient for reused connections
 async_client = httpx.AsyncClient(verify=False, timeout=30.0)
 
@@ -2318,6 +2435,214 @@ def verify_api_session(request: Request, session_token: str = Cookie(None)):
     if not session_token or not verify_signed_session(session_token):
         print(f"[-] verify_api_session failed: session token check (valid={verify_signed_session(session_token) if session_token else False})")
         raise HTTPException(status_code=403, detail="Forbidden Session")
+
+def verify_admin_session(request: Request, admin_session_token: str = Cookie(None)):
+    request_host = request.url.netloc
+
+    # 1. Verify Origin header if present
+    origin = request.headers.get("origin")
+    if origin:
+        origin_clean = origin.replace("https://", "").replace("http://", "")
+        if not (origin_clean.startswith("localhost:") or origin_clean.startswith("127.0.0.1:") or origin_clean.startswith(request_host)):
+            print("[-] verify_admin_session failed: origin check")
+            raise HTTPException(status_code=403, detail="Forbidden Origin")
+
+    # 2. Verify Referer header if present
+    referer = request.headers.get("referer")
+    if referer:
+        ref_clean = referer.replace("https://", "").replace("http://", "")
+        if not (ref_clean.startswith("localhost:") or ref_clean.startswith("127.0.0.1:") or ref_clean.startswith(request_host)):
+            print("[-] verify_admin_session failed: referer check")
+            raise HTTPException(status_code=403, detail="Forbidden Referer")
+
+    # 3. Verify Session Cookie
+    if not admin_session_token or not verify_signed_admin_session(admin_session_token):
+        print("[-] verify_admin_session failed: admin session token check")
+        raise HTTPException(status_code=401, detail="Forbidden Admin Session")
+
+# Admin Login API
+@app.post("/api/admin/login")
+async def api_admin_login(request: Request, response: Response):
+    try:
+        body = await request.json()
+        username = body.get("username")
+        password = body.get("password")
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            token = generate_signed_admin_session()
+            response.set_cookie(
+                key="admin_session_token",
+                value=token,
+                path="/",
+                httponly=True,
+                samesite="strict"
+            )
+            return {"ok": True}
+        else:
+            raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Login request failed: {e}")
+
+# Admin Logout API
+@app.post("/api/admin/logout")
+def api_admin_logout(response: Response):
+    response.delete_cookie(key="admin_session_token", path="/")
+    return {"ok": True}
+
+# Admin Status API
+@app.get("/api/admin/status")
+def api_admin_status(admin_session_token: str = Cookie(None)):
+    if admin_session_token and verify_signed_admin_session(admin_session_token):
+        return {
+            "authenticated": True,
+            "username": ADMIN_USERNAME,
+            "is_default": (ADMIN_USERNAME == "admin" and ADMIN_PASSWORD == "admin")
+        }
+    return {"authenticated": False}
+
+# Report user playback activity / heartbeat
+@app.post("/api/analytics/activity", dependencies=[Depends(verify_api_session)])
+async def api_report_activity(request: Request):
+    try:
+        body = await request.body()
+        data = json.loads(body.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request body")
+        
+    session_token = request.cookies.get("session_token", "unknown")
+    
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.client.host if request.client else "127.0.0.1"
+
+    user_agent = request.headers.get("user-agent", "Unknown")
+    
+    ACTIVE_SESSIONS[session_token] = {
+        "ip": ip,
+        "user_agent": user_agent,
+        "title": data.get("title", "Unknown"),
+        "type": data.get("type", "movie"),
+        "season": data.get("season"),
+        "episode": data.get("episode"),
+        "server_name": data.get("server_name"),
+        "server_type": data.get("server_type"),
+        "adblocker": bool(data.get("adblocker", False)),
+        "last_seen": time.time()
+    }
+    return {"ok": True}
+
+# Get list of live active stream sessions (Admin only)
+@app.get("/api/admin/active_sessions", dependencies=[Depends(verify_admin_session)])
+def api_get_active_sessions():
+    now = time.time()
+    stale_keys = [k for k, v in ACTIVE_SESSIONS.items() if now - v["last_seen"] > 25]
+    for k in stale_keys:
+        ACTIVE_SESSIONS.pop(k, None)
+        
+    sessions_list = []
+    for k, v in ACTIVE_SESSIONS.items():
+        sessions_list.append({
+            "ip": v["ip"],
+            "user_agent": v["user_agent"],
+            "title": v["title"],
+            "type": v["type"],
+            "season": v["season"],
+            "episode": v["episode"],
+            "server_name": v["server_name"],
+            "server_type": v["server_type"],
+            "adblocker": v["adblocker"],
+            "active_seconds_ago": int(now - v["last_seen"])
+        })
+    sessions_list.sort(key=lambda s: s["active_seconds_ago"])
+    return sessions_list
+
+# Admin Stats API
+@app.get("/api/admin/stats", dependencies=[Depends(verify_admin_session)])
+def api_admin_stats():
+    import os
+    import sys
+    import platform
+    
+    # Calculate Uptime
+    uptime_sec = int(time.time() - START_TIME)
+    days = uptime_sec // 86400
+    hours = (uptime_sec % 86400) // 3600
+    minutes = (uptime_sec % 3600) // 60
+    seconds = uptime_sec % 60
+    uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
+    
+    # Memory Info (psutil)
+    memory_info = {}
+    try:
+        import psutil
+        mem = psutil.virtual_memory()
+        memory_info["total"] = f"{mem.total / (1024**3):.2f} GB"
+        memory_info["available"] = f"{mem.available / (1024**3):.2f} GB"
+        memory_info["percent"] = f"{mem.percent}%"
+        # Process Memory
+        process = psutil.Process(os.getpid())
+        memory_info["process"] = f"{process.memory_info().rss / (1024**2):.2f} MB"
+    except Exception:
+        memory_info["total"] = "N/A (psutil not installed)"
+        memory_info["available"] = "N/A"
+        memory_info["percent"] = "N/A"
+        memory_info["process"] = "N/A"
+
+    # Mask sensitive environment variables
+    masked_env = {}
+    for k, v in os.environ.items():
+        if any(x in k.upper() for x in ("KEY", "SECRET", "PASSWORD", "TOKEN", "AUTH", "PASS")):
+            masked_env[k] = "********"
+        else:
+            masked_env[k] = v
+
+    return {
+        "platform": platform.platform(),
+        "python_version": sys.version.split()[0],
+        "cpu_count": os.cpu_count(),
+        "pid": os.getpid(),
+        "uptime": uptime_str,
+        "memory": memory_info,
+        "env_vars": masked_env,
+        "is_default_admin": (ADMIN_USERNAME == "admin" and ADMIN_PASSWORD == "admin"),
+        "total_visitors": len(UNIQUE_VISITORS)
+    }
+
+# Admin Logs API
+@app.get("/api/admin/logs", dependencies=[Depends(verify_admin_session)])
+def api_admin_logs():
+    import sys
+    if hasattr(sys.stdout, "buffer"):
+        return list(sys.stdout.buffer)
+    return ["[-] Log capture not active or buffer missing"]
+
+# Admin Rebuild JS API
+@app.post("/api/admin/rebuild_js", dependencies=[Depends(verify_admin_session)])
+def api_admin_rebuild_js():
+    import subprocess
+    import os
+    import sys
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    obf_path = os.path.join(base_dir, "obfuscator.py")
+    if not os.path.exists(obf_path):
+        raise HTTPException(status_code=404, detail="obfuscator.py not found in project root")
+        
+    try:
+        res = subprocess.run([sys.executable, obf_path], capture_output=True, text=True, check=True)
+        return {
+            "ok": True,
+            "stdout": res.stdout,
+            "stderr": res.stderr
+        }
+    except Exception as e:
+        err_msg = str(e)
+        if hasattr(e, "stderr") and e.stderr:
+            err_msg += "\n" + e.stderr
+        raise HTTPException(status_code=500, detail=f"Obfuscation failed: {err_msg}")
 
 # 0a. Homepage data
 @app.get("/api/homepage", dependencies=[Depends(verify_api_session)])
@@ -2785,12 +3110,12 @@ def api_imdb(
         raise HTTPException(status_code=500, detail=f"IMDB fetch/resolve failed: {e}")
 
 # Read config
-@app.get("/api/config", dependencies=[Depends(verify_api_session)])
+@app.get("/api/config", dependencies=[Depends(verify_admin_session)])
 def api_get_config():
     return load_config()
 
 # Write config
-@app.post("/api/config", dependencies=[Depends(verify_api_session)])
+@app.post("/api/config", dependencies=[Depends(verify_admin_session)])
 async def api_post_config(request: Request):
     try:
         body = await request.body()
@@ -2808,7 +3133,7 @@ async def api_post_config(request: Request):
         raise HTTPException(status_code=500, detail=f"Config save error: {e}")
 
 # Cache refresh
-@app.get("/api/refresh", dependencies=[Depends(verify_api_session)])
+@app.get("/api/refresh", dependencies=[Depends(verify_admin_session)])
 def api_refresh():
     global _homepage_cache
     _homepage_cache = {"data": None, "ts": 0}
@@ -3968,7 +4293,14 @@ async def api_download(
 # Serves static index
 @app.get("/")
 @app.get("/index.html")
-def serve_index():
+def serve_index(request: Request):
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.client.host if request.client else "127.0.0.1"
+    save_unique_visitor(ip)
+
     filepath = os.path.join(_BASE_DIR, "index.html")
     if os.path.exists(filepath):
         session_cookie = generate_signed_session()
@@ -3982,6 +4314,15 @@ def serve_index():
         )
         return resp
     raise HTTPException(status_code=404, detail="File not found")
+
+# Serves static admin panel
+@app.get("/admin")
+@app.get("/admin.html")
+def serve_admin():
+    filepath = os.path.join(_BASE_DIR, "admin.html")
+    if os.path.exists(filepath):
+        return FileResponse(filepath, media_type="text/html")
+    raise HTTPException(status_code=404, detail="Admin panel file not found")
 
 # Serve all other static assets
 @app.get("/{filename:path}")

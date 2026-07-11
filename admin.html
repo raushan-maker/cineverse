@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEUROTIX — God-Level Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body class="admin-page-body">
+    <!-- Retro scanline overlay -->
+    <div class="scanlines" aria-hidden="true"></div>
+
+    <!-- 1. Admin Login View (centered) -->
+    <div id="admin-login-wrapper" class="admin-login-wrapper">
+        <div class="admin-login-card">
+            <div class="login-card-header">
+                <span class="logo-icon">⬡</span>
+                <h1>NEUROTIX</h1>
+                <p>Establishing Security Connection Protocol...</p>
+            </div>
+            <form id="admin-login-form" class="admin-login-form">
+                <div class="setting-group">
+                    <label class="setting-label">Admin Username</label>
+                    <input class="setting-input" type="text" id="admin-username" placeholder="Enter username" required autocomplete="username" />
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">Admin Password</label>
+                    <input class="setting-input" type="password" id="admin-password" placeholder="Enter password" required autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn-tool-action" id="admin-login-btn">Establish Authentication</button>
+                <div id="admin-login-status" class="setting-status" style="margin-top:1.2rem;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Admin Full-Page Console (Dashboard Layout) -->
+    <div id="admin-console-wrapper" class="admin-console-wrapper hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-brand">
+                <span class="brand-logo">⬡</span>
+                <div class="brand-text">
+                    <h2>NEUROTIX</h2>
+                    <span>GOD-MODE ACTIVE</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="sidebar-tab-btn active" data-tab="config">
+                    <span class="tab-icon">⚙️</span> Config Settings
+                </button>
+                <button class="sidebar-tab-btn" data-tab="stats">
+                    <span class="tab-icon">📊</span> Server Telemetry
+                </button>
+                <button class="sidebar-tab-btn" data-tab="visitors">
+                    <span class="tab-icon">👥</span> Live Visitors
+                </button>
+                <button class="sidebar-tab-btn" data-tab="logs">
+                    <span class="tab-icon">📝</span> Real-time Logs
+                </button>
+                <button class="sidebar-tab-btn" data-tab="tools">
+                    <span class="tab-icon">🔧</span> System Tools
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="admin-logout-btn" class="admin-logout-btn-full">Disconnect Console</button>
+            </div>
+        </aside>
+
+        <!-- Main Viewport Content -->
+        <main class="admin-main-viewport">
+            <header class="viewport-header">
+                <div class="header-left">
+                    <h1 id="viewport-title">Config Settings</h1>
+                    <p id="viewport-subtitle">Manage scraping endpoints, base metadata servers, and keys</p>
+                </div>
+                <div class="header-right">
+                    <a href="/" class="btn-back-site">← Visit Homepage</a>
+                </div>
+            </header>
+
+            <div class="viewport-body">
+                <!-- Panel: Configuration Settings -->
+                <section class="admin-view-panel active" id="panel-config">
+                    <div class="viewport-card">
+                        <div class="card-header">Platform Config API</div>
+                        <div class="card-body">
+                            <div class="setting-group">
+                                <label class="setting-label">Scraper Source Domain</label>
+                                <input class="setting-input" type="url" id="cfg-domain" placeholder="https://multimovies.makeup" />
+                                <p class="setting-hint">Target base URL for scraping movies & series</p>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">AnimeDekho Domain</label>
+                                <input class="setting-input" type="url" id="cfg-animedekho-domain" placeholder="https://animedekho.app" />
+                                <p class="setting-hint">Target base URL for anime directory pages</p>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">OMDb API Key <span class="optional-tag">optional</span></label>
+                                <input class="setting-input" type="text" id="cfg-omdb" placeholder="Get free key at omdbapi.com" />
+                                <p class="setting-hint">Supplements card descriptions with real IMDb ratings and awards info</p>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">App Title / Brand Name</label>
+                                <input class="setting-input" type="text" id="cfg-appname" placeholder="NEUROTIX" />
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">Default Player server node</label>
+                                <select class="setting-input" id="cfg-defaultserver">
+                                    <option value="">Auto (Fastest/First)</option>
+                                    <option value="1embed">1Embed</option>
+                                    <option value="cinemaos">CinemaOS</option>
+                                    <option value="cloudbox">Cloudbox</option>
+                                    <option value="cloudplay">Cloudplay</option>
+                                    <option value="embedsu">Embed.su</option>
+                                    <option value="embedmaster">EmbedMaster</option>
+                                    <option value="hyperlink">Hyperlink</option>
+                                    <option value="mediahub">Mediahub</option>
+                                    <option value="movies111">Movies111</option>
+                                    <option value="movievault">MovieVault</option>
+                                    <option value="nhd">NHD Server</option>
+                                    <option value="nexvid">NexVid</option>
+                                    <option value="nontongo">NontonGo</option>
+                                    <option value="nxsha">Nxsha Player</option>
+                                    <option value="peachify">Peachify</option>
+                                    <option value="screenscape">Screenscape</option>
+                                    <option value="smashy">Smashy</option>
+                                    <option value="streamboxhd">StreamBoxHD</option>
+                                    <option value="streamvault">StreamVault</option>
+                                    <option value="superembed">SuperEmbed</option>
+                                    <option value="ultrabox">Ultrabox</option>
+                                    <option value="upcloud">Upcloud</option>
+                                    <option value="cineverse">Vibuxer (Cineverse)</option>
+                                    <option value="vidcore">VidCore</option>
+                                    <option value="vidfast">VidFast</option>
+                                    <option value="vidfy">Vidfy</option>
+                                    <option value="vidfyi">Vidfyi</option>
+                                    <option value="vidify">Vidify</option>
+                                    <option value="vidking">VidKing</option>
+                                    <option value="vidlink">VidLink</option>
+                                    <option value="vidmov">Vidmov</option>
+                                    <option value="vidnest">VidNest</option>
+                                    <option value="vidplay">VidPlay</option>
+                                    <option value="vidrock">Vidrock</option>
+                                    <option value="vidsrc">VidSrc.xyz</option>
+                                    <option value="vidsrcto">VidSrc.to</option>
+                                    <option value="vidsrcru">VidSrc (RU)</option>
+                                    <option value="vidup">VidUp</option>
+                                    <option value="videasy">Videasy</option>
+                                    <option value="vidzee">Vidzee Embed</option>
+                                    <option value="vidzen">Vidzen</option>
+                                </select>
+                            </div>
+                            <div class="settings-actions" style="margin-top: 1.5rem;">
+                                <button class="btn-save-config" id="save-config-btn" style="width: 200px;">Save changes & Reload</button>
+                            </div>
+                            <div class="setting-status" id="setting-status"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Panel: Server Telemetry -->
+                <section class="admin-view-panel" id="panel-stats">
+                    <div id="stats-warning-banner" class="stats-warning hidden">
+                        ⚠️ SECURITY WARN: The console is running with default credentials. Please set custom ADMIN_PASSWORD in Railway variables.
+                    </div>
+                    <div class="stats-grid-full">
+                        <div class="stat-card">
+                            <span class="stat-label">System Uptime</span>
+                            <span class="stat-value" id="stat-uptime">0s</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Python Interpreter</span>
+                            <span class="stat-value" id="stat-python">...</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Active PID</span>
+                            <span class="stat-value" id="stat-pid">...</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">CPU Cores Available</span>
+                            <span class="stat-value" id="stat-cores">...</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Process Memory / System RAM</span>
+                            <span class="stat-value" id="stat-memory">...</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Runtime Platform OS</span>
+                            <span class="stat-value" id="stat-os">...</span>
+                        </div>
+                        <div class="stat-card" style="border-color: rgba(0, 210, 255, 0.3);">
+                            <span class="stat-label" style="color: #00d2ff;">Total Lifetime Visitors</span>
+                            <span class="stat-value" id="stat-total-visitors" style="color: #00d2ff;">0</span>
+                        </div>
+                    </div>
+
+                    <div class="viewport-card" style="margin-top: 1.5rem;">
+                        <div class="card-header">Server Environment Table</div>
+                        <div class="card-body" style="padding: 0;">
+                            <div class="env-table-wrapper-full">
+                                <table class="env-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Environment Variable Key</th>
+                                            <th>Current Value (Sensitive Data Masked)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="env-vars-body">
+                                        <!-- Dynamically generated entries -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Panel: Live Visitors -->
+                <section class="admin-view-panel" id="panel-visitors">
+                    <div class="viewport-card">
+                        <div class="card-header">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>Live Visitor Activity Monitor</span>
+                                <span class="active-badge-live" style="background:rgba(0,255,204,0.1); border:1px solid rgba(0,255,204,0.3); color:#00ffcc; padding:4px 10px; border-radius:12px; font-size:0.7rem; font-family:'Orbitron',sans-serif; font-weight:700;">
+                                    Live Connections: <span id="live-visitor-count">0</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            <div class="env-table-wrapper-full" style="max-height: 520px;">
+                                <table class="env-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Client IP</th>
+                                            <th>Browser / OS</th>
+                                            <th>Now Streaming Title</th>
+                                            <th>Selected Node & Type</th>
+                                            <th>Ad-Blocker Status</th>
+                                            <th>Activity Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="visitors-list-body">
+                                        <tr>
+                                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                                No active streams detected. Watching feeds in pipeline...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="viewport-card" style="margin-top: 2rem; border-color: rgba(255, 68, 68, 0.25);">
+                        <div class="card-header" style="background: rgba(255, 68, 68, 0.02); color: #ff4444;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>Security Firewall Blacklist (Banned IPs)</span>
+                                <div style="display:flex; gap:10px; align-items:center;">
+                                    <input type="text" id="ban-input-ip" placeholder="Enter IP address to manually ban..." style="background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:4px 8px; font-size:0.75rem; color:#fff; font-family:'Space Grotesk',sans-serif; width:220px;" />
+                                    <button class="btn-tool-action" id="btn-manual-ban" style="width:auto; padding:4px 12px; font-size:0.7rem; background:rgba(255,68,68,0.1); border-color:rgba(255,68,68,0.3); color:#ff4444;">🚫 Ban IP</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            <div class="env-table-wrapper-full" style="max-height: 250px;">
+                                <table class="env-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Banned IP Address</th>
+                                            <th>Applied Status / Restriction</th>
+                                            <th>Firewall Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="banned-list-body">
+                                        <tr>
+                                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                                No IP addresses are currently blacklisted. Firewall is clear.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Panel: Terminal Logs -->
+                <section class="admin-view-panel" id="panel-logs">
+                    <div class="viewport-card">
+                        <div class="card-header">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <span>Syslog Buffer Stream</span>
+                                <div class="logs-controls" style="margin-bottom:0;">
+                                    <button class="btn-logs-action" id="btn-refresh-logs" style="margin-right:12px;">Fetch logs now</button>
+                                    <label class="logs-auto-scroll-label">
+                                        <input type="checkbox" id="logs-auto-scroll" checked /> Auto-scroll console
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="logs-console-full" id="admin-logs-console">
+                                <!-- Console print logs lines -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Panel: System Tools -->
+                <section class="admin-view-panel" id="panel-tools">
+                    <div class="stats-grid-full" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="viewport-card">
+                            <div class="card-header">Purge Memory Cache</div>
+                            <div class="card-body">
+                                <p class="tool-desc">Invalidates and clears the server-side cache files for homepage grids, triggering fresh scrapings from TMDB APIs on the next guest visit.</p>
+                                <button class="btn-tool-action" id="refresh-cache-btn" style="margin-top: 1rem;">Clear Cache Buffer</button>
+                                <div id="cache-tool-status" class="tool-status"></div>
+                            </div>
+                        </div>
+                        <div class="viewport-card">
+                            <div class="card-header">Obfuscator Compiler Tool</div>
+                            <div class="card-body">
+                                <p class="tool-desc">Runs a subprocess script compilation that builds and compresses `app.js` into the browser-delivered obfuscated output script (`app.min.js`).</p>
+                                <button class="btn-tool-action" id="btn-rebuild-js" style="margin-top: 1rem;">⚡ Run Compiler</button>
+                                <div id="rebuild-tool-status" class="tool-status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -438,18 +438,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Search
     const searchInput = document.getElementById("search-input");
 
-    // Settings
-    const settingsBtn = document.getElementById("settings-btn");
-    const settingsPanel = document.getElementById("settings-panel");
-    const settingsClose = document.getElementById("settings-close");
     const modalBackdrop = document.getElementById("modal-backdrop");
-    const cfgDomain = document.getElementById("cfg-domain");
-    const cfgOmdb = document.getElementById("cfg-omdb");
-    const cfgAppname = document.getElementById("cfg-appname");
-    const cfgDefaultserver = document.getElementById("cfg-defaultserver");
-    const saveConfigBtn = document.getElementById("save-config-btn");
-    const refreshCacheBtn = document.getElementById("refresh-cache-btn");
-    const settingStatus = document.getElementById("setting-status");
 
     // Player modal
     const playerModal = document.getElementById("player-modal");
@@ -3302,6 +3291,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             showSpinner("HLS not supported in this browser.");
         }
+
+        startPlayerHeartbeat(activeItemMeta?.title || activeItemMeta?.name || "Unknown", activeItemMeta?.type || "movie", currentStreamSeason, currentStreamEpisode, server.name, stream.quality);
     }
 
     // ── Play Iframe ───────────────────────────────────────────────────────────
@@ -3338,7 +3329,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         log(`[ IFRAME ] Sandbox cleared via iframe re-creation`, "system");
         iframeEl.src = server.embed_url;
 
-        // Autoplay next timer start completely removed
+        startPlayerHeartbeat(activeItemMeta?.title || activeItemMeta?.name || "Unknown", activeItemMeta?.type || "movie", currentStreamSeason, currentStreamEpisode, server.name, "Embed");
     }
 
     // ── Iframe Autoplay Timer ─────────────────────────────────────────────────
@@ -3952,6 +3943,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // ── Close player ──────────────────────────────────────────────────────────
     function closePlayer() {
+        stopPlayerHeartbeat();
         resetPreload();
         // Kill any in-progress server stream
         if (_streamSource) { _streamSource.close(); _streamSource = null; }
@@ -4132,82 +4124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // ══════════════════════════════════════════════════════════════════════════
     // SETTINGS PANEL
     // ══════════════════════════════════════════════════════════════════════════
-    async function openSettings() {
-        settingsPanel.classList.remove("hidden");
-        modalBackdrop.classList.remove("hidden");
-        try {
-            const res = await fetch("/api/config");
-            const cfg = await res.json();
-            cfgDomain.value = cfg.source_domain || "";
-            document.getElementById("cfg-animedekho-domain").value = cfg.animedekho_domain || "";
-            cfgOmdb.value = cfg.omdb_api_key || "";
-            cfgAppname.value = cfg.app_name || "";
-            if (cfgDefaultserver) {
-                cfgDefaultserver.value = cfg.default_server || "";
-            }
-        } catch (_) { }
-    }
-
-    function closeSettings() {
-        settingsPanel.classList.add("hidden");
-        if (playerModal.classList.contains("hidden")) {
-            modalBackdrop.classList.add("hidden");
-        }
-        settingStatus.textContent = "";
-        settingStatus.className = "setting-status";
-    }
-
-    settingsBtn.addEventListener("click", openSettings);
-    settingsClose.addEventListener("click", closeSettings);
-    modalBackdrop.addEventListener("click", () => { closePlayer(); closeSettings(); });
-
-    saveConfigBtn.addEventListener("click", async () => {
-        const domain = cfgDomain.value.trim().replace(/\/$/, "");
-        const adDomain = document.getElementById("cfg-animedekho-domain").value.trim().replace(/\/$/, "");
-        if (!domain.startsWith("http") || (adDomain && !adDomain.startsWith("http"))) {
-            settingStatus.textContent = "⚠ Enter a valid URL (https://...)";
-            settingStatus.className = "setting-status err";
-            return;
-        }
-        saveConfigBtn.textContent = "Saving...";
-        try {
-            const res = await fetch("/api/config", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    source_domain: domain,
-                    animedekho_domain: adDomain,
-                    omdb_api_key: cfgOmdb.value.trim(),
-                    app_name: cfgAppname.value.trim() || "NEUROTIX",
-                    default_server: cfgDefaultserver ? cfgDefaultserver.value : ""
-                })
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            settingStatus.textContent = "✅ Saved! Reloading homepage...";
-            settingStatus.className = "setting-status ok";
-            setTimeout(() => { closeSettings(); loadHomepage(); }, 1200);
-        } catch (err) {
-            settingStatus.textContent = `❌ ${err.message}`;
-            settingStatus.className = "setting-status err";
-        } finally {
-            saveConfigBtn.textContent = "Save & Reload";
-        }
-    });
-
-    refreshCacheBtn.addEventListener("click", async () => {
-        refreshCacheBtn.textContent = "Refreshing...";
-        try {
-            await fetch("/api/refresh");
-            settingStatus.textContent = "✅ Cache cleared! Reloading...";
-            settingStatus.className = "setting-status ok";
-            setTimeout(() => { closeSettings(); loadHomepage(); }, 800);
-        } catch (_) {
-            settingStatus.textContent = "❌ Refresh failed.";
-            settingStatus.className = "setting-status err";
-        } finally {
-            refreshCacheBtn.textContent = "🔄 Refresh Cache";
-        }
-    });
+    modalBackdrop.addEventListener("click", closePlayer);
 
     // ══════════════════════════════════════════════════════════════════════════
     // WATCH HISTORY  (localStorage key: "neurotix_history")
@@ -5025,6 +4942,52 @@ document.addEventListener("DOMContentLoaded", async () => {
             startLoadingCycle();
         }
     })();
+
+    // ── User Activity Heartbeat Tracker ──────────────────────────────────────
+    let activityInterval = null;
+    let currentPlayingInfo = null;
+
+    async function sendActivityHeartbeat() {
+        if (!currentPlayingInfo) return;
+        
+        let adblocker = false;
+        try {
+            await fetch('https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js', { method: 'HEAD', mode: 'no-cors' });
+        } catch (_) {
+            adblocker = true;
+        }
+
+        try {
+            await fetch("/api/analytics/activity", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: currentPlayingInfo.title,
+                    type: currentPlayingInfo.type,
+                    season: currentPlayingInfo.season || null,
+                    episode: currentPlayingInfo.episode || null,
+                    server_name: currentPlayingInfo.server_name || "Auto / Loading",
+                    server_type: currentPlayingInfo.server_type || "Unknown",
+                    adblocker: adblocker
+                })
+            });
+        } catch (_) {}
+    }
+
+    function startPlayerHeartbeat(title, type, season = null, episode = null, serverName = null, serverType = null) {
+        if (activityInterval) clearInterval(activityInterval);
+        currentPlayingInfo = { title, type, season, episode, server_name: serverName, server_type: serverType };
+        sendActivityHeartbeat();
+        activityInterval = setInterval(sendActivityHeartbeat, 10000);
+    }
+
+    function stopPlayerHeartbeat() {
+        if (activityInterval) {
+            clearInterval(activityInterval);
+            activityInterval = null;
+        }
+        currentPlayingInfo = null;
+    }
 
     await loadHomepage();
 });
