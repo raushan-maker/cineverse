@@ -411,6 +411,9 @@ function handleDetailsPosterError(img) {
     }
 }
 
+window.handleCardImageError = handleCardImageError;
+window.handleDetailsPosterError = handleDetailsPosterError;
+
 document.addEventListener("DOMContentLoaded", async () => {
     // Start security system immediately
     initSecuritySystem();
