@@ -2296,10 +2296,13 @@ app.add_middleware(CORSCacheMiddleware)
 # Security/Session Verification Dependency
 def verify_api_session(request: Request, session_token: str = Cookie(None)):
     print(f"[*] verify_api_session: origin={request.headers.get('origin')}, referer={request.headers.get('referer')}, session_token={session_token}, cookies={request.cookies}")
+    request_host = request.url.netloc
+
     # 1. Verify Origin header if present
     origin = request.headers.get("origin")
     if origin:
-        if not (origin.startswith("http://localhost:") or origin.startswith("http://127.0.0.1:")):
+        origin_clean = origin.replace("https://", "").replace("http://", "")
+        if not (origin_clean.startswith("localhost:") or origin_clean.startswith("127.0.0.1:") or origin_clean.startswith(request_host)):
             print("[-] verify_api_session failed: origin check")
             raise HTTPException(status_code=403, detail="Forbidden Origin")
 
@@ -2307,7 +2310,7 @@ def verify_api_session(request: Request, session_token: str = Cookie(None)):
     referer = request.headers.get("referer")
     if referer:
         ref_clean = referer.replace("https://", "").replace("http://", "")
-        if not (ref_clean.startswith("localhost:") or ref_clean.startswith("127.0.0.1:")):
+        if not (ref_clean.startswith("localhost:") or ref_clean.startswith("127.0.0.1:") or ref_clean.startswith(request_host)):
             print("[-] verify_api_session failed: referer check")
             raise HTTPException(status_code=403, detail="Forbidden Referer")
 
