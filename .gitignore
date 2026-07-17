@@ -1,3 +1,13 @@
-.session_secret
+# Python
 __pycache__/
 *.pyc
+*.pyo
+
+# Secrets
+.session_secret
+banned_ips.json
+unique_visitors.json
+config.json
+
+# Local env
+.env

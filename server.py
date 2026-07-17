@@ -203,9 +203,130 @@ def save_config(cfg):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
+REPORTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports.json")
+
+def is_network_or_dns_error(exc):
+    import socket
+    import urllib.error
+    exc_str = str(exc).lower()
+    if isinstance(exc, urllib.error.URLError):
+        reason = exc.reason
+        if isinstance(reason, socket.gaierror):
+            return True, "DNS Resolution Failed (Domain may have changed)"
+        if isinstance(reason, (ConnectionRefusedError, socket.timeout, TimeoutError)):
+            return True, f"Connection Failed/Timeout ({type(reason).__name__})"
+        return True, f"URL Error: {exc.reason}"
+    if isinstance(exc, (ConnectionError, TimeoutError, socket.timeout, socket.gaierror)):
+        return True, f"Network/Socket Error: {type(exc).__name__}"
+    if "getaddrinfo failed" in exc_str or "timed out" in exc_str or "connection refused" in exc_str:
+        return True, "Network Connection/Timeout Issue"
+    return False, ""
+
+def report_issue(target: str, error_msg: str, media_title: str = "Unknown", season: str = None, episode: str = None):
+    """
+    Saves a report to reports.json and sends notifications via Discord Webhook or Telegram Bot.
+    """
+    import os
+    import json
+    import time
+    import urllib.request
+    
+    # 1. Save to local reports.json
+    report_entry = {
+        "timestamp": time.time(),
+        "target": target,
+        "media_title": media_title,
+        "season": season,
+        "episode": episode,
+        "error": error_msg
+    }
+    
+    reports = []
+    if os.path.exists(REPORTS_FILE):
+        try:
+            with open(REPORTS_FILE, "r", encoding="utf-8") as f:
+                reports = json.load(f)
+        except Exception:
+            pass
+            
+    reports.insert(0, report_entry)
+    reports = reports[:100]
+    
+    try:
+        with open(REPORTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(reports, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[-] Failed to write to reports.json: {e}")
+
+    # 2. Send Telegram and Discord notifications
+    cfg = load_config()
+    telegram_token = cfg.get("telegram_bot_token", "").strip()
+    telegram_chat_id = cfg.get("telegram_chat_id", "").strip()
+    discord_webhook = cfg.get("discord_webhook_url", "").strip()
+    
+    media_info = media_title
+    if season or episode:
+        media_info += f" (S{season or '?'}-E{episode or '?'})"
+        
+    notification_text = (
+        f"🚨 *NEUROTIX System Alert* 🚨\n"
+        f"⚠️ *Issue detected* on server/domain!\n"
+        f"• *Target/Domain:* `{target}`\n"
+        f"• *Error:* `{error_msg}`\n"
+        f"• *Media context:* {media_info}"
+    )
+
+    # Telegram Bot notification
+    if telegram_token and telegram_chat_id:
+        try:
+            tele_url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
+            payload = json.dumps({
+                "chat_id": telegram_chat_id,
+                "text": notification_text,
+                "parse_mode": "Markdown"
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                tele_url,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                resp.read()
+        except Exception as e:
+            print(f"[-] Telegram notification failed: {e}")
+
+    # Discord Webhook notification
+    if discord_webhook:
+        try:
+            payload = json.dumps({
+                "embeds": [{
+                    "title": "🚨 NEUROTIX System Alert 🚨",
+                    "description": "An issue has been reported on a domain or video streaming server.",
+                    "color": 15158332, # Red
+                    "fields": [
+                        {"name": "Target / Domain", "value": f"`{target}`", "inline": True},
+                        {"name": "Media Context", "value": f"{media_info}", "inline": True},
+                        {"name": "Error Details", "value": f"`{error_msg}`", "inline": False}
+                    ],
+                    "timestamp": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+                }]
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                discord_webhook,
+                data=payload,
+                headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                resp.read()
+        except Exception as e:
+            print(f"[-] Discord notification failed: {e}")
+
 CONFIG = load_config()
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", CONFIG.get("admin_username", "admin"))
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", CONFIG.get("admin_password", "admin"))
+
 
 # ── Homepage Cache ─────────────────────────────────────────────────────────────
 import time
@@ -1937,6 +2058,9 @@ def extract_animedekho_embeds(imdb_id, season=None, episode=None, fallback_title
                 return html
             except Exception as err:
                 print(f"[-] fetch_with_bypass error for {target_url} on {provider_prefix}: {err}")
+                is_net, net_msg = is_network_or_dns_error(err)
+                if is_net:
+                    report_issue(ad_domain, f"Bypass fetch failed: {net_msg}", title, s, e)
                 return ""
 
 
@@ -2068,6 +2192,323 @@ def extract_animedekho_embeds(imdb_id, season=None, episode=None, fallback_title
                 
     return results
 
+
+def extract_allanime_embeds(imdb_id, season=None, episode=None, fallback_title=None):
+    """
+    Scrapes AllAnime to extract stream URLs (e.g. Wixmp, Okru, Mp4Upload, StreamSB).
+    Decrypts the 'tobeparsed' payload using AES-256-CTR and custom clock.json mappings.
+    Supports both subbed and dubbed formats.
+    """
+    import hashlib
+    import base64
+    import json
+    import re
+    import urllib.request
+    import urllib.parse
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.backends import default_backend
+
+    AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0"
+    ALLANIME_REFR = "https://youtu-chan.com"
+    
+    cfg = load_config()
+    allanime_domain = cfg.get("allanime_domain", "https://allanime.day")
+    ALLANIME_BASE = allanime_domain.replace("https://", "").replace("http://", "").rstrip("/")
+    ALLANIME_API = f"https://api.{ALLANIME_BASE}"
+    ALLANIME_KEY = hashlib.sha256(b"Xot36i3lK3:v1").hexdigest()
+
+    MAP = {
+        "79": "A", "7a": "B", "7b": "C", "7c": "D", "7d": "E", "7e": "F", "7f": "G",
+        "70": "H", "71": "I", "72": "J", "73": "K", "74": "L", "75": "M", "76": "N", "77": "O",
+        "68": "P", "69": "Q", "6a": "R", "6b": "S", "6c": "T", "6d": "U", "6e": "V", "6f": "W",
+        "60": "X", "61": "Y", "62": "Z",
+        "59": "a", "5a": "b", "5b": "c", "5c": "d", "5d": "e", "5e": "f", "5f": "g",
+        "50": "h", "51": "i", "52": "j", "53": "k", "54": "l", "55": "m", "56": "n", "57": "o",
+        "48": "p", "49": "q", "4a": "r", "4b": "s", "4c": "t", "4d": "u", "4e": "v", "4f": "w",
+        "40": "x", "41": "y", "42": "z",
+        "08": "0", "09": "1", "0a": "2", "0b": "3", "0c": "4", "0d": "5", "0e": "6", "0f": "7",
+        "00": "8", "01": "9",
+        "15": "-", "16": ".", "67": "_", "46": "~", "02": ":", "17": "/", "07": "?", "1b": "#",
+        "63": "[", "65": "]", "78": "@", "19": "!", "1c": "$", "1e": "&", "10": "(", "11": ")",
+        "12": "*", "13": "+", "14": ",", "03": ";", "05": "=", "1d": "%"
+    }
+
+    def decrypt_url(url_str):
+        if not url_str.startswith("--"):
+            return url_str
+        hex_data = url_str[2:]
+        out = []
+        for i in range(0, len(hex_data), 2):
+            chunk = hex_data[i:i+2]
+            out.append(MAP.get(chunk, ""))
+        decrypted_str = "".join(out)
+        return decrypted_str.replace("/clock", "/clock.json")
+
+    def decrypt_tobeparsed(enc_str):
+        try:
+            data = base64.b64decode(enc_str)
+            iv = data[1:13]
+            ctr_nonce = iv + b"\x00\x00\x00\x02"
+            ct_len = len(data) - 13 - 16
+            ciphertext = data[13 : 13 + ct_len]
+            
+            key_bytes = bytes.fromhex(ALLANIME_KEY)
+            algorithm = algorithms.AES(key_bytes)
+            mode = modes.CTR(ctr_nonce)
+            cipher = Cipher(algorithm, mode, backend=default_backend())
+            decryptor = cipher.decryptor()
+            plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+            return plaintext.decode('utf-8', errors='ignore')
+        except Exception:
+            return None
+
+    def make_post_request(url, payload):
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "User-Agent": AGENT,
+                "Referer": ALLANIME_REFR,
+                "Origin": ALLANIME_REFR,
+                "Content-Type": "application/json"
+            }
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except Exception:
+            return None
+
+    def make_get_request(url, params):
+        query_str = urllib.parse.urlencode(params)
+        req = urllib.request.Request(
+            f"{url}?{query_str}",
+            headers={
+                "User-Agent": AGENT,
+                "Referer": ALLANIME_REFR,
+                "Origin": ALLANIME_REFR
+            }
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                return response.read().decode("utf-8")
+        except Exception:
+            return None
+
+    # Step 1: Find anime show ID by title
+    title = fallback_title
+    if not title and imdb_id:
+        try:
+            imdb_data = fetch_imdb_data(imdb_id)
+            if imdb_data:
+                title = imdb_data.get("title", "")
+        except Exception:
+            pass
+
+    if not title:
+        return []
+
+    # Try searching multiple queries to handle seasons
+    search_queries = []
+    s_num = str(season or "1")
+    e_num = str(episode or "1")
+    
+    if season and str(season) != "1":
+        search_queries.append(f"{title} Season {season}")
+        search_queries.append(f"{title} {season}")
+    search_queries.append(title)
+
+    show_id = None
+    
+    search_gql = """
+    query( $search: SearchInput $limit: Int $page: Int $translationType: VaildTranslationTypeEnumType $countryOrigin: VaildCountryOriginEnumType ) {
+      shows( search: $search limit: $limit page: $page translationType: $translationType countryOrigin: $countryOrigin ) {
+        edges {
+          _id
+          name
+          availableEpisodes
+        }
+      }
+    }
+    """
+
+    for query in search_queries:
+        payload = {
+            "variables": {
+                "search": {
+                    "allowAdult": False,
+                    "allowUnknown": False,
+                    "query": query
+                },
+                "limit": 10,
+                "page": 1,
+                "translationType": "sub",
+                "countryOrigin": "ALL"
+            },
+            "query": search_gql
+        }
+        res = make_post_request(f"{ALLANIME_API}/api", payload)
+        if res:
+            edges = res.get("data", {}).get("shows", {}).get("edges", [])
+            if edges:
+                show_id = edges[0].get("_id")
+                break
+
+    if not show_id:
+        return []
+
+    embeds = []
+
+    # Query both subbed and dubbed versions
+    for t_type in ["sub", "dub"]:
+        lang_label = "Sub" if t_type == "sub" else "Dub"
+        lang_stream = "Subbed" if t_type == "sub" else "Dubbed"
+
+        # Step 2: Query the episode source URLs
+        query_hash = "d405d0edd690624b66baba3068e0edc3ac90f1597d898a1ec8db4e5c43c00fec"
+        query_vars = json.dumps({
+            "showId": show_id,
+            "translationType": t_type,
+            "episodeString": e_num
+        })
+        query_ext = json.dumps({
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": query_hash
+            }
+        })
+        
+        # Try GET first as in ani-cli
+        resp_text = make_get_request(f"{ALLANIME_API}/api", {
+            "variables": query_vars,
+            "extensions": query_ext
+        })
+        
+        # Try POST if GET fails
+        if not resp_text or '"tobeparsed"' not in resp_text:
+            episode_embed_gql = """
+            query ($showId: String!, $translationType: VaildTranslationTypeEnumType!, $episodeString: String!) {
+              episode( showId: $showId translationType: $translationType episodeString: $episodeString ) {
+                episodeString
+                sourceUrls
+              }
+            }
+            """
+            payload = {
+                "variables": {
+                    "showId": show_id,
+                    "translationType": t_type,
+                    "episodeString": e_num
+                },
+                "query": episode_embed_gql
+            }
+            post_res = make_post_request(f"{ALLANIME_API}/api", payload)
+            if post_res:
+                resp_text = json.dumps(post_res)
+
+        if not resp_text:
+            continue
+
+        tobeparsed_match = re.search(r'"tobeparsed"\s*:\s*"([^"]+)"', resp_text)
+        decrypted = None
+        if tobeparsed_match:
+            decrypted = decrypt_tobeparsed(tobeparsed_match.group(1))
+        
+        source_urls = []
+        if decrypted:
+            try:
+                data = json.loads(decrypted)
+                source_urls = data.get("episode", {}).get("sourceUrls", [])
+            except Exception:
+                pass
+        else:
+            try:
+                data = json.loads(resp_text)
+                source_urls = data.get("data", {}).get("episode", {}).get("sourceUrls", [])
+            except Exception:
+                pass
+
+        for s_obj in source_urls:
+            name = s_obj.get("sourceName")
+            raw_url = s_obj.get("sourceUrl")
+            if not raw_url:
+                continue
+                
+            dec_url = decrypt_url(raw_url)
+            
+            # If it's a clock JSON URL, fetch the direct links
+            if "clock" in dec_url:
+                clock_url = f"https://{ALLANIME_BASE}{dec_url}"
+                headers = {
+                    "User-Agent": AGENT,
+                    "Referer": ALLANIME_REFR
+                }
+                try:
+                    req_clock = urllib.request.Request(clock_url, headers=headers)
+                    with urllib.request.urlopen(req_clock, timeout=8) as r_clock:
+                        clock_data = json.loads(r_clock.read().decode("utf-8"))
+                        
+                    for link_obj in clock_data.get("links", []):
+                        link_url = link_obj.get("link")
+                        if not link_url:
+                            continue
+                            
+                        # Handle Wixmp direct CDN link conversion
+                        if "repackager.wixmp.com" in link_url:
+                            clean_url = link_url.replace("repackager.wixmp.com/", "").split(".urlset")[0]
+                            parts = clean_url.split("/,")
+                            if len(parts) >= 2:
+                                base_part = parts[0]
+                                res_list_str = parts[1].split(",/")[0]
+                                end_part = parts[1].split(",/")[1]
+                                resolutions = res_list_str.split(",")
+                                for res in resolutions:
+                                    if res:
+                                        wix_direct = f"{base_part}/{res}/{end_part}"
+                                        embeds.append({
+                                            "name": f"AllAnime - Wixmp ({res} - {lang_label})",
+                                            "url": wix_direct,
+                                            "nume": f"wixmp",
+                                            "is_iframe": False,
+                                            "language": lang_stream,
+                                            "quality": res
+                                        })
+                            embeds.append({
+                                "name": f"AllAnime - Wixmp (HLS - {lang_label})",
+                                "url": link_url,
+                                "nume": "wixmp",
+                                "is_iframe": False,
+                                "language": lang_stream,
+                                "quality": "Auto"
+                            })
+                        else:
+                            is_hls = (link_obj.get("hls") or link_url.endswith(".m3u8") or link_url.endswith(".mp4"))
+                            embeds.append({
+                                "name": f"AllAnime - {name} ({lang_label})",
+                                "url": link_url,
+                                "nume": f"allanime-{name.lower()}",
+                                "is_iframe": False if is_hls else True,
+                                "language": lang_stream,
+                                "quality": "Auto" if is_hls else "Embed Player"
+                            })
+                except Exception as err:
+                    print(f"[-] Error resolving clock JSON for {name} ({t_type}): {err}")
+            else:
+                is_ifr = True
+                if dec_url.endswith(".m3u8") or dec_url.endswith(".mp4"):
+                    is_ifr = False
+                embeds.append({
+                    "name": f"AllAnime - {name} ({lang_label})",
+                    "url": dec_url,
+                    "nume": f"allanime-{name.lower()}",
+                    "is_iframe": is_ifr,
+                    "language": lang_stream,
+                    "quality": "Auto" if not is_ifr else "Embed Player"
+                })
+                
+    return embeds
+
+
 def format_embed_name(url):
     domain_match = re.search(r'https?://([^/]+)', url)
     if not domain_match:
@@ -2103,6 +2544,14 @@ def format_embed_name(url):
         return "CinemaOS"
     if "vidzee" in domain:
         return "Vidzee Embed"
+    if "wixstatic" in domain or "wixmp" in domain:
+        return "AllAnime - Wixmp"
+    if "ok.ru" in domain:
+        return "AllAnime - Ok.ru"
+    if "mp4upload" in domain:
+        return "AllAnime - Mp4Upload"
+    if "streamsb" in domain or "sbplay" in domain or "sbembed" in domain:
+        return "AllAnime - StreamSB"
     if "animedekho" in domain:
         return "AnimeDekho"
     if "vidking" in domain:
@@ -3139,6 +3588,46 @@ def api_refresh():
     _homepage_cache = {"data": None, "ts": 0}
     return {"ok": True}
 
+# Report client-side playback failure
+@app.post("/api/report_failure", dependencies=[Depends(verify_api_session)])
+async def api_post_report_failure(request: Request):
+    try:
+        body = await request.body()
+        data = json.loads(body.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request body")
+    
+    target = data.get("target", "Unknown Server")
+    error_msg = data.get("error", "Unknown Playback Error")
+    media_title = data.get("title", "Unknown Title")
+    season = data.get("season")
+    episode = data.get("episode")
+    
+    report_issue(target, error_msg, media_title, season, episode)
+    return {"ok": True}
+
+# Get reported issues (Admin only)
+@app.get("/api/admin/reports", dependencies=[Depends(verify_admin_session)])
+def api_get_reports():
+    if os.path.exists(REPORTS_FILE):
+        try:
+            with open(REPORTS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+# Clear reported issues (Admin only)
+@app.post("/api/admin/clear_reports", dependencies=[Depends(verify_admin_session)])
+def api_clear_reports():
+    try:
+        if os.path.exists(REPORTS_FILE):
+            os.remove(REPORTS_FILE)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to clear reports: {e}")
+
+
 # Fetch Streams & Decrypt
 @app.get("/api/fetch", dependencies=[Depends(verify_api_session)])
 async def api_fetch(
@@ -3187,6 +3676,9 @@ async def api_fetch(
                     resolved_imdb_id = imdb_match.group(0)
         except Exception as err:
             print(f"[-] Fetch Error for detail URL {url}: {err}")
+            is_net, net_msg = is_network_or_dns_error(err)
+            if is_net:
+                report_issue(url, f"Detail URL fetch failed: {net_msg}", resolved_imdb_id or "Unknown Detail Page")
 
     def task_resolve_tmdb():
         nonlocal resolved_imdb_id
@@ -3373,6 +3865,9 @@ async def api_fetch(
                     push_to_queue(emb)
             except Exception as err:
                 print(f"[-] Multimovies post-id stream extract failed: {err}")
+                is_net, net_msg = is_network_or_dns_error(err)
+                if is_net:
+                    report_issue(source_domain, f"Multimovies extraction failed: {net_msg}", fallback_title or resolved_imdb_id or "Unknown", s, e)
             finally:
                 with active_tasks_lock:
                     active_tasks -= 1
@@ -3509,6 +4004,39 @@ async def api_fetch(
                     if active_tasks == 0:
                         loop.call_soon_threadsafe(queue.put_nowait, None)
 
+        def allanime_worker():
+            nonlocal active_tasks
+            try:
+                if is_anime and fallback_title:
+                    allanime_embeds = extract_allanime_embeds(
+                        resolved_imdb_id, 
+                        s, 
+                        e, 
+                        fallback_title=fallback_title
+                    )
+                    for embed in allanime_embeds:
+                        embed_url = embed["url"]
+                        is_ifr = embed.get("is_iframe", True)
+                        srv_obj = {
+                            "server": embed["nume"],
+                            "name": embed["name"],
+                            "is_iframe": is_ifr,
+                            "embed_url": embed_url if is_ifr else "",
+                            "streams": [{
+                                "quality": embed.get("quality", "Auto"),
+                                "language": embed.get("language", "Subbed"),
+                                "url": embed_url
+                            }]
+                        }
+                        push_to_queue(srv_obj)
+            except Exception as err:
+                print(f"[-] AllAnime scrape task failed: {err}")
+            finally:
+                with active_tasks_lock:
+                    active_tasks -= 1
+                    if active_tasks == 0:
+                        loop.call_soon_threadsafe(queue.put_nowait, None)
+
         # Assemble list of worker functions
         workers = []
         
@@ -3536,6 +4064,7 @@ async def api_fetch(
         # 4. AnimeDekho scraper
         if is_anime:
             workers.append(animedekho_worker)
+            workers.append(allanime_worker)
 
         active_tasks = len(workers)
         

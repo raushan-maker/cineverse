@@ -98,6 +98,11 @@
                                 <p class="setting-hint">Target base URL for anime directory pages</p>
                             </div>
                             <div class="setting-group">
+                                <label class="setting-label">AllAnime Domain</label>
+                                <input class="setting-input" type="url" id="cfg-allanime-domain" placeholder="https://allanime.day" />
+                                <p class="setting-hint">Target base URL for AllAnime scraping api (from ani-cli)</p>
+                            </div>
+                            <div class="setting-group">
                                 <label class="setting-label">OMDb API Key <span class="optional-tag">optional</span></label>
                                 <input class="setting-input" type="text" id="cfg-omdb" placeholder="Get free key at omdbapi.com" />
                                 <p class="setting-hint">Supplements card descriptions with real IMDb ratings and awards info</p>
@@ -111,6 +116,10 @@
                                 <select class="setting-input" id="cfg-defaultserver">
                                     <option value="">Auto (Fastest/First)</option>
                                     <option value="1embed">1Embed</option>
+                                    <option value="allanime-mp4upload">AllAnime - Mp4Upload</option>
+                                    <option value="allanime-okru">AllAnime - Ok.ru</option>
+                                    <option value="allanime-streamsb">AllAnime - StreamSB</option>
+                                    <option value="wixmp">AllAnime - Wixmp</option>
                                     <option value="cinemaos">CinemaOS</option>
                                     <option value="cloudbox">Cloudbox</option>
                                     <option value="cloudplay">Cloudplay</option>
@@ -153,6 +162,26 @@
                                     <option value="vidzen">Vidzen</option>
                                 </select>
                             </div>
+                            <div style="border-top: 1px dashed rgba(255, 255, 255, 0.1); margin: 2rem 0 1.5rem 0; padding-top: 1.5rem;">
+                                <h3 style="font-family: 'Orbitron', sans-serif; font-size: 0.95rem; color: #ffaa00; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 8px;">
+                                    <span>🔔 Notification & Reporting Config</span>
+                                </h3>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">Telegram Bot Token</label>
+                                <input class="setting-input" type="password" id="cfg-telegram-bot-token" placeholder="Enter Telegram Bot Token (from @BotFather)" />
+                                <p class="setting-hint">Optional. To receive reports directly on Telegram.</p>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">Telegram Chat ID</label>
+                                <input class="setting-input" type="text" id="cfg-telegram-chat-id" placeholder="Enter Telegram Chat ID (from @userinfobot)" />
+                                <p class="setting-hint">Optional. Group or Personal chat ID where alerts should be sent.</p>
+                            </div>
+                            <div class="setting-group">
+                                <label class="setting-label">Discord Webhook URL</label>
+                                <input class="setting-input" type="url" id="cfg-discord-webhook-url" placeholder="https://discord.com/api/webhooks/..." />
+                                <p class="setting-hint">Optional. Channel webhook URL to receive notifications on Discord.</p>
+                            </div>
                             <div class="settings-actions" style="margin-top: 1.5rem;">
                                 <button class="btn-save-config" id="save-config-btn" style="width: 200px;">Save changes & Reload</button>
                             </div>
@@ -194,6 +223,35 @@
                         <div class="stat-card" style="border-color: rgba(0, 210, 255, 0.3);">
                             <span class="stat-label" style="color: #00d2ff;">Total Lifetime Visitors</span>
                             <span class="stat-value" id="stat-total-visitors" style="color: #00d2ff;">0</span>
+                        </div>
+                    </div>
+
+                    <div class="viewport-card" style="margin-top: 1.5rem; border-color: rgba(255, 170, 0, 0.35);">
+                        <div class="card-header" style="color: #ffaa00; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <span>Reported Domain & Server Issues</span>
+                            <button class="btn-tool-action" id="btn-clear-reports" style="width: auto; padding: 4px 12px; font-size: 0.7rem; background: rgba(255, 170, 0, 0.1); border-color: rgba(255, 170, 0, 0.3); color: #ffaa00; margin: 0;" onclick="clearReports()">🧹 Clear All Reports</button>
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            <div class="env-table-wrapper-full" style="max-height: 300px; overflow-y: auto;">
+                                <table class="env-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Timestamp</th>
+                                            <th>Target (Domain/Server)</th>
+                                            <th>Associated Media</th>
+                                            <th>Issue Details / Error</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="issues-list-body">
+                                        <tr>
+                                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                                No server or domain issues reported yet. All systems operational.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 

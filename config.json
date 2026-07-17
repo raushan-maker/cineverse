@@ -1,5 +1,5 @@
 {
-  "source_domain": "https://multimovies.mhttps:/qrewfsdSAF/example.comakeup",
+  "source_domain": "https://multimovies.makeup",
   "omdb_api_key": "",
   "app_name": "NEUROTIX",
   "app_tagline": "Stream Everything. Fear Nothing.",
@@ -34,6 +34,7 @@
     }
   ],
   "animedekho_domain": "https://animedekho.app",
+  "allanime_domain": "https://allanime.day",
   "default_server": "peachify",
   "enable_adblock": false
 }

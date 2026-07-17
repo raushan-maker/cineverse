@@ -19,9 +19,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Config Tab Inputs
     const cfgDomain = document.getElementById("cfg-domain");
     const cfgAnimedekhoDomain = document.getElementById("cfg-animedekho-domain");
+    const cfgAllanimeDomain = document.getElementById("cfg-allanime-domain");
     const cfgOmdb = document.getElementById("cfg-omdb");
     const cfgAppname = document.getElementById("cfg-appname");
     const cfgDefaultserver = document.getElementById("cfg-defaultserver");
+    const cfgTelegramBotToken = document.getElementById("cfg-telegram-bot-token");
+    const cfgTelegramChatId = document.getElementById("cfg-telegram-chat-id");
+    const cfgDiscordWebhookUrl = document.getElementById("cfg-discord-webhook-url");
     const saveConfigBtn = document.getElementById("save-config-btn");
     const configStatus = document.getElementById("setting-status");
 
@@ -142,10 +146,22 @@ document.addEventListener("DOMContentLoaded", () => {
             const cfg = await res.json();
             cfgDomain.value = cfg.source_domain || "";
             cfgAnimedekhoDomain.value = cfg.animedekho_domain || "";
+            if (cfgAllanimeDomain) {
+                cfgAllanimeDomain.value = cfg.allanime_domain || "";
+            }
             cfgOmdb.value = cfg.omdb_api_key || "";
             cfgAppname.value = cfg.app_name || "";
             if (cfgDefaultserver) {
                 cfgDefaultserver.value = cfg.default_server || "";
+            }
+            if (cfgTelegramBotToken) {
+                cfgTelegramBotToken.value = cfg.telegram_bot_token || "";
+            }
+            if (cfgTelegramChatId) {
+                cfgTelegramChatId.value = cfg.telegram_chat_id || "";
+            }
+            if (cfgDiscordWebhookUrl) {
+                cfgDiscordWebhookUrl.value = cfg.discord_webhook_url || "";
             }
         } catch (_) {}
     }
@@ -186,8 +202,82 @@ document.addEventListener("DOMContentLoaded", () => {
                 tr.appendChild(tdVal);
                 tbody.appendChild(tr);
             }
+            
+            // Fetch and render issue reports
+            loadReports();
         } catch (_) {}
     }
+
+    async function loadReports() {
+        try {
+            const res = await fetch("/api/admin/reports");
+            if (!res.ok) return;
+            const reports = await res.json();
+            
+            const tbody = document.getElementById("issues-list-body");
+            if (!tbody) return;
+            
+            if (reports.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                            No server or domain issues reported yet. All systems operational.
+                        </td>
+                    </tr>`;
+                return;
+            }
+            
+            tbody.innerHTML = reports.map((r, idx) => {
+                const dateStr = new Date(r.timestamp * 1000).toLocaleString();
+                const mediaStr = r.season && r.episode
+                    ? `${r.media_title} (S${r.season}E${r.episode})`
+                    : r.media_title || "N/A";
+                
+                return `
+                    <tr>
+                        <td style="color: var(--text-muted); font-size: 0.72rem;">${dateStr}</td>
+                        <td><span style="color:#ffaa00; font-family:'Orbitron', sans-serif; font-size:0.75rem; font-weight:700;">${r.target}</span></td>
+                        <td style="color:#00ffcc;">${mediaStr}</td>
+                        <td style="color:#ff4444; font-size:0.75rem;">${r.error}</td>
+                        <td>
+                            <button class="btn-logs-action" style="background:rgba(0, 255, 136, 0.1); border-color:rgba(0, 255, 136, 0.25); color:#00ff88; padding:3px 8px; font-size:0.65rem;" onclick="resolveIssueReport('${r.target}', ${r.timestamp})">Resolve</button>
+                        </td>
+                    </tr>`;
+            }).join("");
+        } catch (_) {}
+    }
+
+    async function resolveIssueReport(target, timestamp) {
+        if (!confirm(`Are you sure you want to resolve this report for ${target}?`)) return;
+        try {
+            const res = await fetch("/api/admin/clear_reports", { method: "POST" });
+            if (res.ok) {
+                loadReports();
+            } else {
+                alert("Failed to clear reports");
+            }
+        } catch (err) {
+            alert(`Error: ${err.message}`);
+        }
+    }
+
+    async function clearReports() {
+        if (!confirm("Are you sure you want to clear all reported server/domain issues?")) return;
+        try {
+            const res = await fetch("/api/admin/clear_reports", { method: "POST" });
+            if (res.ok) {
+                loadReports();
+            } else {
+                alert("Failed to clear reports");
+            }
+        } catch (err) {
+            alert(`Error: ${err.message}`);
+        }
+    }
+
+    window.resolveIssueReport = resolveIssueReport;
+    window.clearReports = clearReports;
+
 
     // Load Logs
     async function loadLogs() {
@@ -353,8 +443,9 @@ document.addEventListener("DOMContentLoaded", () => {
     saveConfigBtn.addEventListener("click", async () => {
         const domain = cfgDomain.value.trim().replace(/\/$/, "");
         const adDomain = cfgAnimedekhoDomain.value.trim().replace(/\/$/, "");
+        const aaDomain = cfgAllanimeDomain ? cfgAllanimeDomain.value.trim().replace(/\/$/, "") : "";
         
-        if (!domain.startsWith("http") || (adDomain && !adDomain.startsWith("http"))) {
+        if (!domain.startsWith("http") || (adDomain && !adDomain.startsWith("http")) || (aaDomain && !aaDomain.startsWith("http"))) {
             configStatus.textContent = "⚠ Enter a valid URL (https://...)";
             configStatus.className = "setting-status err";
             return;
@@ -370,9 +461,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     source_domain: domain,
                     animedekho_domain: adDomain,
+                    allanime_domain: aaDomain,
                     omdb_api_key: cfgOmdb.value.trim(),
                     app_name: cfgAppname.value.trim() || "NEUROTIX",
-                    default_server: cfgDefaultserver ? cfgDefaultserver.value : ""
+                    default_server: cfgDefaultserver ? cfgDefaultserver.value : "",
+                    telegram_bot_token: cfgTelegramBotToken ? cfgTelegramBotToken.value.trim() : "",
+                    telegram_chat_id: cfgTelegramChatId ? cfgTelegramChatId.value.trim() : "",
+                    discord_webhook_url: cfgDiscordWebhookUrl ? cfgDiscordWebhookUrl.value.trim() : ""
                 })
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);

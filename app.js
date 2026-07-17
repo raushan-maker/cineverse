@@ -485,6 +485,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const serverDrawer = document.getElementById("server-drawer");
     const serverDrawerToggle = document.getElementById("server-drawer-toggle");
     const openExternalBtn = document.getElementById("open-external-btn");
+    const reportServerBtn = document.getElementById("report-server-btn");
     const serverDrawerClose = document.getElementById("server-drawer-close");
     const serverDrawerBackdrop = document.getElementById("server-drawer-backdrop");
 
@@ -525,6 +526,44 @@ document.addEventListener("DOMContentLoaded", async () => {
         openExternalBtn.addEventListener("click", () => {
             if (activeStreamUrl) {
                 window.open(activeStreamUrl, '_blank');
+            }
+        });
+    }
+
+    if (reportServerBtn) {
+        reportServerBtn.addEventListener("click", async () => {
+            const serverName = activeTitle || "Unknown Server";
+            if (!confirm(`Are you sure you want to report that the server "${serverName}" is broken or failing to load?`)) {
+                return;
+            }
+            
+            reportServerBtn.disabled = true;
+            const originalText = reportServerBtn.innerHTML;
+            reportServerBtn.textContent = "Reporting...";
+            
+            try {
+                const res = await fetch("/api/report_failure", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        target: serverName,
+                        error: "User reported: Broken stream or infinite buffering",
+                        title: activeItemMeta?.title || activeItemMeta?.name || "Unknown Title",
+                        season: typeof currentStreamSeason !== 'undefined' ? currentStreamSeason : null,
+                        episode: typeof currentStreamEpisode !== 'undefined' ? currentStreamEpisode : null
+                    })
+                });
+                
+                if (res.ok) {
+                    alert("Thank you! The issue has been reported to the owner.");
+                } else {
+                    alert("Failed to send report. Please try again later.");
+                }
+            } catch (err) {
+                alert(`Error sending report: ${err.message}`);
+            } finally {
+                reportServerBtn.disabled = false;
+                reportServerBtn.innerHTML = originalText;
             }
         });
     }
@@ -3233,6 +3272,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         videoEl.classList.remove("hidden");
         iframeEl.classList.add("hidden");
         if (openExternalBtn) openExternalBtn.classList.remove("hidden");
+        if (reportServerBtn) reportServerBtn.classList.remove("hidden");
         showSpinner("Buffering...");
 
         const rawUrl = stream.url;
@@ -3284,6 +3324,18 @@ document.addEventListener("DOMContentLoaded", async () => {
                     } else {
                         log(`[ FATAL ] ${d.details}`, "error");
                         showSpinner("Playback error. Try another server.");
+                        
+                        fetch("/api/report_failure", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                target: activeTitle || "Unknown Server",
+                                error: `Automated: HLS Playback Error (${d.details})`,
+                                title: activeItemMeta?.title || activeItemMeta?.name || "Unknown Title",
+                                season: typeof currentStreamSeason !== 'undefined' ? currentStreamSeason : null,
+                                episode: typeof currentStreamEpisode !== 'undefined' ? currentStreamEpisode : null
+                            })
+                        }).catch(() => {});
                     }
                 }
             });
@@ -3304,6 +3356,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         hideIdleOverlay();
         videoEl.classList.add("hidden");
         if (openExternalBtn) openExternalBtn.classList.remove("hidden");
+        if (reportServerBtn) reportServerBtn.classList.remove("hidden");
 
         // Re-create the iframe element to completely reset and clear the browser's sandbox context
         const oldIframe = document.getElementById("iframe-player");
@@ -3552,6 +3605,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         videoEl.src = "";
         iframeEl.src = "about:blank";
         if (openExternalBtn) openExternalBtn.classList.add("hidden");
+        if (reportServerBtn) reportServerBtn.classList.add("hidden");
         showSpinner("Resolving stream...");
     }
 
